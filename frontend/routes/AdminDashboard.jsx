@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, Outlet} from "react-router-dom";
 
 const AdminDashboard = () => {
     return (
@@ -8,6 +8,11 @@ const AdminDashboard = () => {
                 <h1>Welcome to the AdminDashboard</h1>
                 {/* <Link to="/dashboard">Go to Dashboard</Link> */}
             </div>
+
+            <Link to="manage">
+                <h2>View service management</h2>
+            </Link>
+            <Outlet />
         </>
     );
 };
