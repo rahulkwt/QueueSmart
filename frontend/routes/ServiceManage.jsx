@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 const ServiceManagement = () => {
+  // sets up how services will be formatted and detailed
   const [services, setServices] = useState([
     { id: 1, name: "General Consultation", description: "Standard check-up", duration: 20, priority: "Medium" },
   ]);
 
+  // form data for the dynamic table below in HTML
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -15,6 +17,8 @@ const ServiceManagement = () => {
 
   const [isEditing, setIsEditing] = useState(null);
 
+  // give web response based on whether the
+  // admin is adding a service or editing one
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isEditing !== null) {
@@ -28,6 +32,8 @@ const ServiceManagement = () => {
     setFormData({ name: "", description: "", duration: "", priority: "Low" });
   };
 
+  // boolean to tell whether the admin is editing or adding
+  // in the HTML returned below
   const handleEdit = (service) => {
     setFormData(service);
     setIsEditing(service.id);
@@ -36,9 +42,11 @@ const ServiceManagement = () => {
   return (
     <div className="container mt-5">
       <h1>Add/Edit Services</h1>
+      {/*says whether the admin is editing or adding a service*/}
       <h2 className="mb-4">Currently: {isEditing ? "Editing" : "Adding"}</h2>
       
-      {/* Service Form */}
+      {/* the following inputs will be for the admin to do */}
+      {/* define the input value for the service's name*/}
       <div className="card p-4 mb-5 shadow-sm">
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
@@ -53,6 +61,7 @@ const ServiceManagement = () => {
             />
           </div>
 
+          {/* define the input for the service's description */}
           <div className="mb-3">
             <label className="form-label">Description*</label>
             <textarea
@@ -64,6 +73,7 @@ const ServiceManagement = () => {
             ></textarea>
           </div>
 
+          {/* define the input for the service's expected duration */}
           <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Expected Duration* (minutes)</label>
@@ -75,6 +85,8 @@ const ServiceManagement = () => {
                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
               />
             </div>
+
+            {/* assign a priority level for the service */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Priority Level</label>
               <select
@@ -89,6 +101,8 @@ const ServiceManagement = () => {
             </div>
           </div>
 
+          {/* change the submit form button based on whether 
+             admin is editing or adding */}
           <button type="submit" className={`btn ${isEditing ? 'btn-warning' : 'btn-success'}`}>
             {isEditing ? "Update Service" : "Add Service"}
           </button>
@@ -100,12 +114,13 @@ const ServiceManagement = () => {
         </form>
       </div>
 
-      {/* Existing Services List */}
+      {/* table for the services */}
       <h4>Configured Services</h4>
       <div className="table-responsive">
         <table className="table table-hover mt-3">
           <thead className="table-light">
             <tr>
+              {/* row of service attributes */}
               <th>Name</th>
               <th>Duration</th>
               <th>Priority</th>
@@ -113,9 +128,13 @@ const ServiceManagement = () => {
             </tr>
           </thead>
           <tbody>
+            {/* defines rows for current services*/}
             {services.map((service) => (
               <tr key={service.id}>
-                <td><strong>{service.name}</strong></td>
+                <td>
+                  <div><strong>{service.name}</strong></div>
+                  <small className="text-muted">{service.description}</small>
+                </td>
                 <td>{service.duration} mins</td>
                 <td>
                   <span className={`badge ${service.priority === 'High' ? 'bg-danger' : service.priority === 'Medium' ? 'bg-primary' : 'bg-secondary'}`}>

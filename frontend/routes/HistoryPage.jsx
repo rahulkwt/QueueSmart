@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 const HistoryPage = () => {
+  // javascript
+  // for searching
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  // mock data of prior queues
   const [services] = useState([
     { id: 1, name: "Pharmacy Pickup",
       description: "Collect prescribed medications",
@@ -16,6 +19,9 @@ const HistoryPage = () => {
       date: "09/25/2025", notes: "Normal results", status: "Completed" }
   ]);
 
+  // this is where we search
+  // one can search either with the name in the search bar
+  // or with the calendar/date input
   const filteredServices = services.filter(s => {
     const matchesText = s.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = searchDate === "" || (() => {
@@ -27,7 +33,9 @@ const HistoryPage = () => {
     return matchesText && matchesDate;
   });
 
+  // actual HTML returned
   return (
+
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="mb-0">Your queue history</h2>
@@ -45,7 +53,7 @@ const HistoryPage = () => {
         />
       </div>
 
-
+      {/* quick summary, taken from Alec */}
       <div className="row mb-4">
         <div className="col-md-4 mb-3">
           <div className="card text-center border-primary shadow-sm">
@@ -72,7 +80,7 @@ const HistoryPage = () => {
           </div>
         </div>
       </div>
-
+      {/* table for the log of queues */}
       <div className="card mb-4 shadow-sm">
         <div className="card-header bg-white">
           <h5 className="mb-0">Queue Log</h5>
@@ -82,6 +90,7 @@ const HistoryPage = () => {
             <table className="table table-hover mb-0">
               <thead className="table-light">
                 <tr>
+                  {/*table head*/}
                   <th style={{ width: "40%" }}>Service Name</th>
                   <th style={{ width: "15%" }}>Date</th>
                   <th style={{ width: "15%" }}>Status</th> 
@@ -89,6 +98,7 @@ const HistoryPage = () => {
                 </tr>
               </thead>
               <tbody>
+                {/*goes through queues, gives information in rows*/}
                 {filteredServices.map((service) => (
                   <tr key={service.id}>
                     <td>

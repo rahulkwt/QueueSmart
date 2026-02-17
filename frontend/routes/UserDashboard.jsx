@@ -6,6 +6,7 @@ const UserDashboard = () => {
         <>
             <div>
                 <h1>Welcome to the UserDashboard</h1>
+                {/*text links to queue history, by Erick*/}
                 <Link to="history">
                     <h2>View History</h2>
                 </Link>
