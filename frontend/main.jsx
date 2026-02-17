@@ -10,6 +10,9 @@ import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
 import ErrorPage from "./routes/ErrorPage";
+import JoinQueue from "./routes/JoinQueue";
+import QueueStatus from "./routes/QueueStatus";
+import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -47,6 +50,10 @@ const router = createBrowserRouter([
     children: [
       { path: "user", element: <UserDashboard /> },
       { path: "admin", element: <AdminDashboard /> },
+
+      { path: "join", element: <JoinQueue /> },
+      { path: "status/:service", element: <QueueStatus /> },
+      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
