@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 const HistoryPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchDate, setSearchDate] = useState("");
   const [services] = useState([
     { id: 1, name: "Pharmacy Pickup",
       description: "Collect prescribed medications",
@@ -12,12 +13,19 @@ const HistoryPage = () => {
       date: "01/12/2026", notes: "Normal results", status: "Completed" },
     { id: 3, name: "General Consultation",
       description: "Routine check-ups and doctor visits",
-      date: "09/25/2025", notes: "Follow-up in 2 weeks", status: "Completed" }
+      date: "09/25/2025", notes: "Normal results", status: "Completed" }
   ]);
 
-  const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredServices = services.filter(s => {
+    const matchesText = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate = searchDate === "" || (() => {
+      const [m, d, y] = s.date.split("/");
+      const formattedDate = `${y}-${m}-${d}`;
+      return formattedDate === searchDate;
+    })();
+    
+    return matchesText && matchesDate;
+  });
 
   return (
     <div className="container py-4">
@@ -30,7 +38,13 @@ const HistoryPage = () => {
           placeholder="Search services..." 
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        <input 
+          type="date" 
+          className="form-control w-25 ms-2" 
+          onChange={(e) => setSearchDate(e.target.value)} 
+        />
       </div>
+
 
       <div className="row mb-4">
         <div className="col-md-4 mb-3">
