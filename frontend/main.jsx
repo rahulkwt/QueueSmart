@@ -9,6 +9,7 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
+import HistoryPage from "./routes/HistoryPage";
 import ErrorPage from "./routes/ErrorPage";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
@@ -41,11 +42,17 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/portal",
+    path: "portal",
     element: <PortalLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "user", element: <UserDashboard /> },
+      { 
+        path: "user", 
+        element: <UserDashboard />,
+        children: [
+          { path: "history", element: <HistoryPage /> }
+        ]
+      },
       { path: "admin", element: <AdminDashboard /> },
     ],
   },

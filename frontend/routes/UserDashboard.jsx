@@ -1,13 +1,18 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 
 const UserDashboard = () => {
     return (
         <>
             <div>
                 <h1>Welcome to the UserDashboard</h1>
-                {/* <Link to="/dashboard">Go to Dashboard</Link> */}
+                <Link to="history">
+                    <h2>View History</h2>
+                </Link>
             </div>
+
+            <hr />
+            <Outlet />
         </>
     );
 };
