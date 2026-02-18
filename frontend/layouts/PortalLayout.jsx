@@ -1,10 +1,11 @@
 import { Outlet } from "react-router-dom";
+import Navbar from "../utils/NavbarPublic.jsx";
 
 const PortalLayout = () => {
   return (
     <>
-      <h2>Portal</h2>
-      {/* Later: sidebar, topbar, logout */}
+      {/* Navbar can go here later */}
+      <Navbar />
       <Outlet />
     </>
   );
