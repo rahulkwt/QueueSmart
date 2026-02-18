@@ -2,32 +2,29 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 const UserDashboard = () => {
-    //Mock data
-    const currentQueue = {
-        service: "Emergency Room",
-        position: 4,
-        estimatedWait: "30 minutes",
-        status: "Waiting",
-    };
+  // Mock data - will be replaced with real data in Assignment 3
+ const currentQueue = {
+    service: "General Consultation",
+    position: 4,
+    estimatedWait: "20 min",
+    status: "Waiting",
+  };
 
-const availableServices = [
-    { id: 1, name: "General Consultation", waitTime: "15 minutes", queueLength: 8 },
-    { id: 2, name: "Pediatrics", waitTime: "20 minutes", queueLength: 5 },
-    { id: 3, name: "Dermatology", waitTime: "10 minutes", queueLength: 3 },
-    { id: 4, name: "Cardiology", waitTime: "25 minutes", queueLength: 10 },
-    { id: 5, name: "Orthopedics", waitTime: "18 minutes", queueLength: 7 },
-];
+  const availableServices = [
+    { id: 1, name: "General Consultation", waitTime: "20 min", queueLength: 8 },
+    { id: 2, name: "Lab Work & Blood Tests", waitTime: "15 min", queueLength: 5 },
+    { id: 3, name: "Pharmacy Pickup", waitTime: "10 min", queueLength: 3 },
+    { id: 4, name: "Radiology & Imaging", waitTime: "35 min", queueLength: 12 },
+    { id: 5, name: "Vaccination", waitTime: "10 min", queueLength: 4 },
+  ];
 
-const notifications =[
-{ id : 1, message: "Your appointment for General Consultation is confirmed for tomorrow at 10 AM." },
-{ id : 2, message: "Your position in the Emergency Room queue has changed. You are now 4th." },
-{ id : 3, message: "Your Lab Work and Blood Test visit is complete " },
-];
+  const notifications = [
+    { id: 1, message: "You are now #4 in line for General Consultation", time: "2 min ago", type: "info" },
+    { id: 2, message: "Pharmacy Pickup queue is now open", time: "10 min ago", type: "success" },
+    { id: 3, message: "Your Lab Work & Blood Tests visit is complete", time: "1 hour ago", type: "secondary" },
+  ];
 
-const toggleQueue = (id) => {
-    setServices(services.map((s) => s.id === id ? { ...s, inOpen: !s.isOpen} : s));
-};
-return (
+  return (
     <div className="container py-4">
       <h2 className="mb-4">User Dashboard</h2>
 
@@ -113,4 +110,5 @@ return (
     </div>
   );
 };
+
 export default UserDashboard;
