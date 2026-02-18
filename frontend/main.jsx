@@ -28,8 +28,12 @@ import "./public/assets/css/animate.min.css";
 // import "./public/assets/css/animated-headline.css";
 import "./public/assets/css/nice-select.css";
 
+// 4. Vendor CSS
+import "./public/assets/vendors/css/vendors.min.css";
+
 // 4. Template main style LAST (VERY IMPORTANT)
 import "./public/assets/css/bootstrap.min.css";
+import "./public/assets/css/theme.min.css";
 import "./public/assets/css/style.css";
 
 

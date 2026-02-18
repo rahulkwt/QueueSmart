@@ -41,7 +41,7 @@ const Navbar = () => {
             <div className="col-xl-2 col-lg-2 col-md-1">
             <div className="logo">
                 <Link to="/">
-                <img src="/frontend/public/assets/img/logo/logo.png" alt="" />
+                <img src="/frontend/public/assets/images/logo/logo.png" alt="" />
                 </Link>
             </div>
             </div>
