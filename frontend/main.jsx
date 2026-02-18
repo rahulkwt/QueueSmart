@@ -11,6 +11,7 @@ import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
 import HistoryPage from "./routes/HistoryPage";
 import ServiceManage from "./routes/ServiceManage";
+import CustomerTable from "./routes/CustomerTable"
 import ErrorPage from "./routes/ErrorPage";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
@@ -51,7 +52,8 @@ const router = createBrowserRouter([
         path: "user", 
         element: <UserDashboard />,
         children: [
-          { path: "history", element: <HistoryPage /> }
+          // replacec history with customer table to test out
+          { path: "history", element: <CustomerTable /> }
         ]
       },
       { path: "admin",
