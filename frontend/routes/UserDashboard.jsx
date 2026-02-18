@@ -8,7 +8,7 @@ const mockQueueStatus = {
     serviceName: "General Consultation",
     position: 3,
     estimatedWait: 15,
-    status: "waiting", // waiting | almost-ready | served
+    status: "waiting",
     joinedAt: "2025-02-18T09:32:00",
   },
 };
@@ -108,44 +108,6 @@ const mockNotifications = [
   },
 ];
 
-const mockHistory = [
-  {
-    id: 1,
-    serviceName: "Dental Checkup",
-    date: "2025-02-17",
-    outcome: "Served",
-    waitTime: "18 min",
-  },
-  {
-    id: 2,
-    serviceName: "Blood Work & Lab Tests",
-    date: "2025-02-14",
-    outcome: "Served",
-    waitTime: "22 min",
-  },
-  {
-    id: 3,
-    serviceName: "General Consultation",
-    date: "2025-02-10",
-    outcome: "Served",
-    waitTime: "12 min",
-  },
-  {
-    id: 4,
-    serviceName: "ENT Examination",
-    date: "2025-02-05",
-    outcome: "Cancelled",
-    waitTime: "—",
-  },
-  {
-    id: 5,
-    serviceName: "Neurological Screening",
-    date: "2025-01-28",
-    outcome: "Served",
-    waitTime: "35 min",
-  },
-];
-
 // ── Helper Components ──────────────────────────────────────────────────────────
 
 const StatusBadge = ({ status }) => {
@@ -156,16 +118,6 @@ const StatusBadge = ({ status }) => {
   };
   const s = map[status] || map.waiting;
   return <span className={s.cls}>{s.label}</span>;
-};
-
-const OutcomeBadge = ({ outcome }) => {
-  const cls =
-    outcome === "Served"
-      ? "badge bg-success"
-      : outcome === "Cancelled"
-      ? "badge bg-danger"
-      : "badge bg-secondary";
-  return <span className={cls}>{outcome}</span>;
 };
 
 // ── Main Component ─────────────────────────────────────────────────────────────
@@ -193,9 +145,12 @@ const UserDashboard = () => {
               </p>
             </div>
             <div className="col-auto">
-              <Link to="/portal/user" className="btn btn-primary">
-                <i className="fas fa-sync-alt me-1"></i> Refresh
-              </Link>
+              <button
+                className="btn btn-primary"
+                onClick={() => window.location.reload()}
+              >
+                Refresh
+              </button>
             </div>
           </div>
         </div>
@@ -209,15 +164,11 @@ const UserDashboard = () => {
               <div className="card-body p-4">
                 <div className="row align-items-center">
                   <div className="col-lg-6">
-                    <h5 className="fw-bold mb-3">
-                      <i className="fas fa-clipboard-list me-2 text-primary"></i>
-                      Current Queue Status
-                    </h5>
+                    <h5 className="fw-bold mb-3">Current Queue Status</h5>
                     <h4 className="mb-2">{queue.serviceName}</h4>
                     <StatusBadge status={queue.status} />
                   </div>
 
-                  {/* Stat boxes */}
                   <div className="col-lg-6">
                     <div className="row text-center mt-3 mt-lg-0">
                       <div className="col-4">
@@ -251,7 +202,6 @@ const UserDashboard = () => {
                   </div>
                 </div>
 
-                {/* Progress visual */}
                 <div className="mt-4">
                   <div className="d-flex justify-content-between mb-1">
                     <small className="text-muted">Queue Progress</small>
@@ -268,7 +218,7 @@ const UserDashboard = () => {
 
                 <div className="mt-3 text-end">
                   <button className="btn btn-outline-danger btn-sm">
-                    <i className="fas fa-sign-out-alt me-1"></i> Leave Queue
+                    Leave Queue
                   </button>
                 </div>
               </div>
@@ -279,11 +229,8 @@ const UserDashboard = () => {
         {/* ── Active Services ────────────────────────────────────────── */}
         <div className="row mb-4">
           <div className="col-12">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0">
-                <i className="fas fa-hospital me-2 text-primary"></i>
-                Active Services
-              </h5>
+            <div className="mb-3">
+              <h5 className="fw-bold mb-0">Active Services</h5>
             </div>
           </div>
 
@@ -313,9 +260,7 @@ const UserDashboard = () => {
                       ></i>
                     </div>
                     {svc.available ? (
-                      <span className="badge bg-success-subtle text-success">
-                        Open
-                      </span>
+                      <span className="badge bg-success">Open</span>
                     ) : (
                       <span className="badge bg-secondary">Closed</span>
                     )}
@@ -327,13 +272,11 @@ const UserDashboard = () => {
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
                       <small className="text-muted">
-                        <i className="fas fa-users me-1"></i>
                         {svc.queueLength} in queue
                       </small>
                     </div>
                     <div>
                       <small className="text-muted">
-                        <i className="fas fa-clock me-1"></i>
                         ~{svc.waitTime} min
                       </small>
                     </div>
@@ -351,14 +294,12 @@ const UserDashboard = () => {
           ))}
         </div>
 
-        {/* ── Notifications & History Row ─────────────────────────────── */}
+        {/* ── Notifications (Full Width) ─────────────────────────────── */}
         <div className="row mb-5">
-          {/* Notifications */}
-          <div className="col-lg-5 mb-4 mb-lg-0">
-            <div className="card border-0 shadow-sm h-100">
+          <div className="col-12">
+            <div className="card border-0 shadow-sm">
               <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3 px-4">
                 <h6 className="fw-bold mb-0">
-                  <i className="fas fa-bell me-2 text-primary"></i>
                   Notifications
                   {unreadCount > 0 && (
                     <span className="badge bg-danger ms-2">{unreadCount}</span>
@@ -371,7 +312,7 @@ const UserDashboard = () => {
                   Mark all read
                 </button>
               </div>
-              <div className="card-body p-0" style={{ maxHeight: 380, overflowY: "auto" }}>
+              <div className="card-body p-0">
                 <ul className="list-group list-group-flush">
                   {notifications.map((n) => (
                     <li
@@ -381,22 +322,13 @@ const UserDashboard = () => {
                       }`}
                     >
                       <div className="d-flex">
-                        <div className="me-3 mt-1">
-                          <i
-                            className={`fas ${
-                              n.type === "queue-update"
-                                ? "fa-arrow-up text-primary"
-                                : "fa-info-circle text-success"
-                            }`}
-                          ></i>
-                        </div>
                         <div>
                           <p className="mb-1 small">{n.message}</p>
                           <small className="text-muted">{n.time}</small>
                         </div>
                         {!n.read && (
                           <span
-                            className="ms-auto mt-1 bg-primary rounded-circle"
+                            className="ms-auto mt-1 bg-primary rounded-circle flex-shrink-0"
                             style={{ width: 8, height: 8, display: "inline-block" }}
                           ></span>
                         )}
@@ -404,44 +336,6 @@ const UserDashboard = () => {
                     </li>
                   ))}
                 </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* History */}
-          <div className="col-lg-7">
-            <div className="card border-0 shadow-sm h-100">
-              <div className="card-header bg-white border-bottom py-3 px-4">
-                <h6 className="fw-bold mb-0">
-                  <i className="fas fa-history me-2 text-primary"></i>
-                  Queue History
-                </h6>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0">
-                    <thead className="bg-light">
-                      <tr>
-                        <th className="px-4 py-3 small text-muted fw-semibold">Service</th>
-                        <th className="py-3 small text-muted fw-semibold">Date</th>
-                        <th className="py-3 small text-muted fw-semibold">Wait Time</th>
-                        <th className="py-3 small text-muted fw-semibold">Outcome</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mockHistory.map((h) => (
-                        <tr key={h.id}>
-                          <td className="px-4 py-3">{h.serviceName}</td>
-                          <td className="py-3">{h.date}</td>
-                          <td className="py-3">{h.waitTime}</td>
-                          <td className="py-3">
-                            <OutcomeBadge outcome={h.outcome} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </div>
           </div>

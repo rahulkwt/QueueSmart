@@ -1,142 +1,321 @@
-
-import { Link } from "react-router-dom";
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
+
+// ── Mock Data ──────────────────────────────────────────────────────────────────
+
+const initialServices = [
+  {
+    id: 1,
+    name: "General Consultation",
+    department: "General Medicine",
+    icon: "flaticon-cardiovascular",
+    description: "Routine medical consultations and check-ups.",
+    expectedDuration: 20,
+    queueLength: 8,
+    currentlyServing: "Patient #A-042",
+    isOpen: true,
+  },
+  {
+    id: 2,
+    name: "Dental Checkup",
+    department: "Dentistry",
+    icon: "flaticon-teeth",
+    description: "Dental examinations, cleanings, and minor procedures.",
+    expectedDuration: 30,
+    queueLength: 5,
+    currentlyServing: "Patient #D-017",
+    isOpen: true,
+  },
+  {
+    id: 3,
+    name: "ENT Examination",
+    department: "ENT",
+    icon: "flaticon-ear",
+    description: "Ear, nose, and throat specialist consultations.",
+    expectedDuration: 25,
+    queueLength: 3,
+    currentlyServing: "Patient #E-008",
+    isOpen: true,
+  },
+  {
+    id: 4,
+    name: "Orthopedic Consult",
+    department: "Orthopedics",
+    icon: "flaticon-bone",
+    description: "Bone and joint evaluation, fracture follow-ups.",
+    expectedDuration: 20,
+    queueLength: 0,
+    currentlyServing: "—",
+    isOpen: false,
+  },
+  {
+    id: 5,
+    name: "Neurological Screening",
+    department: "Neurology",
+    icon: "flaticon-lung",
+    description: "Neurological assessments and diagnostic screenings.",
+    expectedDuration: 40,
+    queueLength: 12,
+    currentlyServing: "Patient #N-031",
+    isOpen: true,
+  },
+  {
+    id: 6,
+    name: "Blood Work & Lab Tests",
+    department: "Laboratory",
+    icon: "flaticon-cell",
+    description: "Blood draws, urinalysis, and standard lab panels.",
+    expectedDuration: 15,
+    queueLength: 6,
+    currentlyServing: "Patient #L-055",
+    isOpen: true,
+  },
+];
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 const AdminDashboard = () => {
-  // Mock data
-  const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", description: "Routine check-ups and doctor visits", duration: 20, priority: "high", queueLength: 8, isOpen: true },
-    { id: 2, name: "Lab Work & Blood Tests", description: "Blood draws, urine tests, and lab diagnostics", duration: 15, priority: "medium", queueLength: 5, isOpen: true },
-    { id: 3, name: "Pharmacy Pickup", description: "Collect prescribed medications", duration: 10, priority: "low", queueLength: 3, isOpen: true },
-    { id: 4, name: "Radiology & Imaging", description: "X-rays, MRIs, CT scans, and ultrasounds", duration: 35, priority: "high", queueLength: 12, isOpen: true },
-    { id: 5, name: "Vaccination", description: "Flu shots, COVID boosters, and immunizations", duration: 10, priority: "medium", queueLength: 4, isOpen: false },
-  ]);
-
-  const recentActivity = [
-    { id: 1, action: "Patient served", detail: "John D. completed General Consultation", time: "5 min ago" },
-    { id: 2, action: "Queue opened", detail: "Lab Work & Blood Tests queue opened", time: "20 min ago" },
-    { id: 3, action: "Patient removed", detail: "Jane S. left Radiology & Imaging", time: "30 min ago" },
-    { id: 4, action: "Service created", detail: "Vaccination service was added", time: "1 hour ago" },
-  ];
+  const [services, setServices] = useState(initialServices);
 
   const toggleQueue = (id) => {
-    setServices(services.map((s) =>
-      s.id === id ? { ...s, isOpen: !s.isOpen } : s
-    ));
+    setServices((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, isOpen: !s.isOpen } : s))
+    );
   };
 
-  const getPriorityBadge = (priority) => {
-    const colors = { high: "danger", medium: "warning", low: "success" };
-    return <span className={`badge bg-${colors[priority]}`}>{priority}</span>;
+  const serveNext = (id) => {
+    setServices((prev) =>
+      prev.map((s) =>
+        s.id === id && s.queueLength > 0
+          ? { ...s, queueLength: s.queueLength - 1 }
+          : s
+      )
+    );
   };
 
-  const totalInQueue = services.reduce((sum, s) => sum + s.queueLength, 0);
-  const openServices = services.filter((s) => s.isOpen).length;
+  const totalQueued = services.reduce((sum, s) => sum + s.queueLength, 0);
+  const openCount = services.filter((s) => s.isOpen).length;
+  const closedCount = services.filter((s) => !s.isOpen).length;
+  const avgWait = services.length
+    ? Math.round(
+        services.reduce(
+          (sum, s) => sum + (s.isOpen ? s.expectedDuration : 0),
+          0
+        ) / (openCount || 1)
+      )
+    : 0;
 
   return (
-    <div className="container py-4">
-      <h2 className="mb-4">Admin Dashboard</h2>
-
-      {/* Summary Cards */}
-      <div className="row mb-4">
-        <div className="col-md-3 mb-3">
-          <div className="card text-center border-primary">
-            <div className="card-body">
-              <h6 className="text-muted">Total Services</h6>
-              <h3 className="text-primary">{services.length}</h3>
+    <div className="main-content">
+      {/* ── Page Header ──────────────────────────────────────────────── */}
+      <div className="page-header">
+        <div className="container-fluid">
+          <div className="row align-items-center mb-4">
+            <div className="col">
+              <h2 className="header-title mb-0">Admin Dashboard</h2>
+              <p className="text-muted mb-0 mt-1">
+                Manage hospital queues and services at a glance.
+              </p>
             </div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="card text-center border-success">
-            <div className="card-body">
-              <h6 className="text-muted">Open Queues</h6>
-              <h3 className="text-success">{openServices}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="card text-center border-warning">
-            <div className="card-body">
-              <h6 className="text-muted">Total in Queue</h6>
-              <h3 className="text-warning">{totalInQueue}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="card text-center border-info">
-            <div className="card-body">
-              <h6 className="text-muted">Avg Wait Time</h6>
-              <h3 className="text-info">14 min</h3>
+            <div className="col-auto">
+              <button
+                className="btn btn-primary"
+                onClick={() => window.location.reload()}
+              >
+                Refresh
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Services Table */}
-      <div className="card mb-4">
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">Services</h5>
-        </div>
-        <div className="card-body p-0">
-          <table className="table table-hover mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>Service Name</th>
-                <th>Duration</th>
-                <th>Priority</th>
-                <th>Queue Length</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((service) => (
-                <tr key={service.id}>
-                  <td>
-                    <strong>{service.name}</strong>
-                    <br />
-                    <small className="text-muted">{service.description}</small>
-                  </td>
-                  <td>{service.duration} min</td>
-                  <td>{getPriorityBadge(service.priority)}</td>
-                  <td>{service.queueLength}</td>
-                  <td>
-                    <span className={`badge bg-${service.isOpen ? "success" : "secondary"}`}>
-                      {service.isOpen ? "Open" : "Closed"}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className={`btn btn-sm ${service.isOpen ? "btn-outline-danger" : "btn-outline-success"} me-2`}
-                      onClick={() => toggleQueue(service.id)}
-                    >
-                      {service.isOpen ? "Close" : "Open"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="card">
-        <div className="card-header">
-          <h5 className="mb-0">Recent Activity</h5>
-        </div>
-        <div className="card-body">
-          {recentActivity.map((activity) => (
-            <div key={activity.id} className="d-flex justify-content-between align-items-center border-bottom py-2">
-              <div>
-                <strong>{activity.action}</strong>
-                <br />
-                <small className="text-muted">{activity.detail}</small>
+      <div className="container-fluid">
+        {/* ── Summary Cards ──────────────────────────────────────────── */}
+        <div className="row mb-4">
+          <div className="col-lg-3 col-md-6 mb-3">
+            <div className="card border-0 shadow-sm">
+              <div className="card-body p-4">
+                <h3 className="mb-0 fw-bold">{totalQueued}</h3>
+                <small className="text-muted">Total in Queues</small>
               </div>
-              <small className="text-muted">{activity.time}</small>
             </div>
-          ))}
+          </div>
+
+          <div className="col-lg-3 col-md-6 mb-3">
+            <div className="card border-0 shadow-sm">
+              <div className="card-body p-4">
+                <h3 className="mb-0 fw-bold text-success">{openCount}</h3>
+                <small className="text-muted">Open Queues</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-3 col-md-6 mb-3">
+            <div className="card border-0 shadow-sm">
+              <div className="card-body p-4">
+                <h3 className="mb-0 fw-bold text-danger">{closedCount}</h3>
+                <small className="text-muted">Closed Queues</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-3 col-md-6 mb-3">
+            <div className="card border-0 shadow-sm">
+              <div className="card-body p-4">
+                <h3 className="mb-0 fw-bold" style={{ color: "#e67e22" }}>
+                  {avgWait} min
+                </h3>
+                <small className="text-muted">Avg. Service Duration</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Services Table ─────────────────────────────────────────── */}
+        <div className="row mb-5">
+          <div className="col-12">
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-white border-bottom py-3 px-4">
+                <h5 className="fw-bold mb-0">
+                  Hospital Services &amp; Queue Lengths
+                </h5>
+              </div>
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="bg-light">
+                      <tr>
+                        <th className="px-4 py-3 small text-muted fw-semibold">
+                          Service
+                        </th>
+                        <th className="py-3 small text-muted fw-semibold">
+                          Duration
+                        </th>
+                        <th className="py-3 small text-muted fw-semibold">
+                          Queue
+                        </th>
+                        <th className="py-3 small text-muted fw-semibold">
+                          Currently Serving
+                        </th>
+                        <th className="py-3 small text-muted fw-semibold">
+                          Status
+                        </th>
+                        <th className="py-3 small text-muted fw-semibold text-center">
+                          Quick Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((svc) => (
+                        <tr key={svc.id}>
+                          {/* Service name + icon */}
+                          <td className="px-4 py-3">
+                            <div className="d-flex align-items-center">
+                              <div
+                                className="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  backgroundColor: svc.isOpen
+                                    ? "#e8f0fe"
+                                    : "#f5f5f5",
+                                }}
+                              >
+                                <i
+                                  className={svc.icon}
+                                  style={{
+                                    fontSize: 18,
+                                    color: svc.isOpen ? "#2563eb" : "#999",
+                                  }}
+                                ></i>
+                              </div>
+                              <div>
+                                <span className="fw-semibold">{svc.name}</span>
+                                <br />
+                                <small className="text-muted">{svc.department}</small>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Duration */}
+                          <td className="py-3">{svc.expectedDuration} min</td>
+
+                          {/* Queue length */}
+                          <td className="py-3">
+                            <span
+                              className={`fw-bold ${
+                                svc.queueLength >= 10
+                                  ? "text-danger"
+                                  : svc.queueLength >= 5
+                                  ? "text-warning"
+                                  : "text-success"
+                              }`}
+                            >
+                              {svc.queueLength}
+                            </span>{" "}
+                            <small className="text-muted">patients</small>
+
+                            <div
+                              className="progress mt-1"
+                              style={{ height: 4, maxWidth: 100 }}
+                            >
+                              <div
+                                className={`progress-bar ${
+                                  svc.queueLength >= 10
+                                    ? "bg-danger"
+                                    : svc.queueLength >= 5
+                                    ? "bg-warning"
+                                    : "bg-success"
+                                }`}
+                                style={{
+                                  width: `${Math.min(
+                                    (svc.queueLength / 15) * 100,
+                                    100
+                                  )}%`,
+                                }}
+                              ></div>
+                            </div>
+                          </td>
+
+                          {/* Currently serving */}
+                          <td className="py-3">
+                            <span className={svc.isOpen ? "" : "text-muted"}>
+                              {svc.currentlyServing}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3">
+                            {svc.isOpen ? (
+                              <span className="badge bg-success">Open</span>
+                            ) : (
+                              <span className="badge bg-secondary">Closed</span>
+                            )}
+                          </td>
+
+                          {/* Quick Actions */}
+                          <td className="py-3 text-center">
+                            <div className="d-flex justify-content-center gap-2 flex-wrap">
+                              <button
+                                className={`btn btn-sm ${
+                                  svc.isOpen
+                                    ? "btn-outline-danger"
+                                    : "btn-outline-success"
+                                }`}
+                                onClick={() => toggleQueue(svc.id)}
+                              >
+                                {svc.isOpen ? "Close" : "Open"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
