@@ -10,32 +10,35 @@ const PortalLayout = () => {
 
   return (
   <>
-    {/* Sidebar (fixed by template CSS) */}
-    <Sidebar role={isAdmin ? "admin" : "user"} />
-
-    {/* Main Area (shifted right) */}
     <div
       style={{
-        marginLeft: "280px",   // SAME width as sidebar
         minHeight: "100vh",
         display: "flex",
-        flexDirection: "column",
       }}
     >
-      {/* Navbar */}
-      <Navbar />
+      {/* Sidebar */}
+      <Sidebar role={isAdmin ? "admin" : "user"} />
 
-      {/* Page Content */}
+      {/* Main Content Area */}
       <div
-  style={{
-    padding: "24px",
-    paddingTop: "80px", // 👈 add this
-  }}
->
-  <Outlet />
-</div>
-
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Navbar />
+        <div style={{ flex: 1 ,
+          position: "fixed",
+          left: "200px",
+          right: "0",
+        }}>
+          <Outlet />
+        </div>
+        {/* <Outlet /> */}
+      </div>
     </div>
+
   </>
 );
 };
