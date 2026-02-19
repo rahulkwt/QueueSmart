@@ -45,9 +45,9 @@ const ServiceManagement = () => {
       {/*says whether the admin is editing or adding a service*/}
       <h2 className="mb-4">Currently: {isEditing ? "Editing" : "Adding"}</h2>
       
-      {/* the following inputs will be for the admin to do */}
-      {/* define the input value for the service's name*/}
-      <div className="card p-4 mb-5 shadow-sm">
+      {/* ================= UPDATED: FORM WRAPPED WITH TEMPLATE CLASSES ================= */}
+      {/* Applied 'card-body lead-status' and shadow for template styling */}
+      <div className="card p-4 mb-5 shadow-sm lead-status">
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label">Service Name* (Max 100 characters)</label>
@@ -90,7 +90,7 @@ const ServiceManagement = () => {
             <div className="col-md-6 mb-3">
               <label className="form-label">Priority Level</label>
               <select
-                className="form-select"
+                className="form-select py-1"
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               >
@@ -103,51 +103,76 @@ const ServiceManagement = () => {
 
           {/* change the submit form button based on whether 
              admin is editing or adding */}
-          <button type="submit" className={`btn ${isEditing ? 'btn-warning' : 'btn-success'}`}>
+          <button
+            type="submit"
+            className={`btn ${isEditing ? 'btn-warning' : 'btn-light-brand'}`} // updated to template button
+          >
             {isEditing ? "Update Service" : "Add Service"}
           </button>
           {isEditing && (
-            <button className="btn btn-link" onClick={() => {setIsEditing(null); setFormData({name:"", description:"", duration:"", priority:"Low"})}}>
+            <button
+              type="button"
+              className="btn ms-3"
+              onClick={() => {
+                setIsEditing(null);
+                setFormData({ name: "", description: "", duration: "", priority: "Low" });
+              }}
+            >
               Cancel
             </button>
           )}
         </form>
       </div>
+      {/* ================= END UPDATED FORM ================= */}
 
       {/* table for the services */}
       <h4>Configured Services</h4>
-      <div className="table-responsive">
-        <table className="table table-hover mt-3">
-          <thead className="table-light">
-            <tr>
-              {/* row of service attributes */}
-              <th>Name</th>
-              <th>Duration</th>
-              <th>Priority</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* defines rows for current services*/}
-            {services.map((service) => (
-              <tr key={service.id}>
-                <td>
-                  <div><strong>{service.name}</strong></div>
-                  <small className="text-muted">{service.description}</small>
-                </td>
-                <td>{service.duration} mins</td>
-                <td>
-                  <span className={`badge ${service.priority === 'High' ? 'bg-danger' : service.priority === 'Medium' ? 'bg-primary' : 'bg-secondary'}`}>
-                    {service.priority}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(service)}>Edit</button>
-                </td>
+      <div className="card p-4 mb-5 shadow-sm lead-status">
+        <div className="table-responsive">
+          <table className="table table-hover mt-3">
+            <thead className="bg-transparent border-bottom">
+              <tr>
+                <th>Name</th>
+                <th>Duration</th>
+                <th>Priority</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {services.map((service) => (
+                <tr key={service.id}>
+                  <td>
+                    <div><strong>{service.name}</strong></div>
+                    <small className="text-muted">{service.description}</small>
+                  </td>
+                  <td>{service.duration} mins</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        service.priority === 'High'
+                          ? 'bg-danger'
+                          : service.priority === 'Medium'
+                          ? 'bg-primary'
+                          : 'bg-secondary'
+                      }`}
+                    >
+                      {service.priority}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => handleEdit(service)}
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
