@@ -263,8 +263,8 @@
 						width: 280px;
 						position: fixed;
 						background-color: $white;
-						border-top: 1px solid $border-color;
-						border-left: 1px solid $border-color;
+						border-top: 1px solid #e5e7eb;
+						border-left: 1px solid #e5e7eb;
 						display: flex;
 						flex-direction: column;
 						opacity: 0;
@@ -301,7 +301,7 @@
 							display: flex;
 							align-items: center;
 							line-height: 0;
-							border-bottom: 1px solid $border-color;
+							border-bottom: 1px solid #e5e7eb;
 						}
 					}
 				}
@@ -315,7 +315,7 @@
 				display: block;
 				position: fixed;
 				background: $white;
-				border-right: 1px solid $border-color;
+				border-right: 1px solid #e5e7eb;
 				opacity: 0;
 				visibility: hidden;
 				transition: all 0.3s ease;
@@ -333,7 +333,7 @@
 					display: flex;
 					align-items: center;
 					line-height: 0;
-					border-bottom: 1px solid $border-color;
+					border-bottom: 1px solid #e5e7eb;
 				}
 			}
 			.page-content-right-navigation-wrapper {
@@ -345,7 +345,7 @@
 				display: block;
 				position: fixed;
 				background: $white;
-				border-left: 1px solid $border-color;
+				border-left: 1px solid #e5e7eb;
 				opacity: 0;
 				visibility: hidden;
 				transition: all 0.3s ease;
@@ -363,7 +363,7 @@
 					display: flex;
 					align-items: center;
 					line-height: 0;
-					border-bottom: 1px solid $border-color;
+					border-bottom: 1px solid #e5e7eb;
 				}
 			}
 			.help-center-content-header {
@@ -383,7 +383,7 @@
 							padding: 15px 25px;
 							border-right: none;
 							border-left: 3px solid transparent;
-							border-bottom: 1px solid $border-color;
+							border-bottom: 1px solid #e5e7eb;
 							&.active,
 							&:hover {
 								border-bottom: 0;
@@ -404,7 +404,7 @@
 						padding: 10px 20px;
 						align-items: center;
 						justify-content: flex-start;
-						border: 1px solid $border-color;
+						border: 1px solid #e5e7eb;
 						border-radius: $radius-sm;
 
 						&.action-btn-right-border {
@@ -468,7 +468,7 @@
 					overflow-x: hidden;
 					background: $white;
 					box-shadow: $shadow-lg;
-					border-right: 1px solid $border-color;
+					border-right: 1px solid #e5e7eb;
 					opacity: 0;
 					visibility: hidden;
 					transform: translateX(-100%);
@@ -480,7 +480,7 @@
 							padding: 25px;
 							display: flex;
 							align-items: center;
-							border-bottom: 1px solid $border-color;
+							border-bottom: 1px solid #e5e7eb;
 						}
 					}
 					.nxl-lavel-mega-menu-wrapper {
@@ -503,7 +503,7 @@
 									height: auto;
 									overflow-y: auto;
 									border-left: none;
-									border-top: 1px solid $border-color;
+									border-top: 1px solid #e5e7eb;
 									.nxl-mega-menu-miscellaneous {
 										.nxl-mega-menu-miscellaneous-tabs {
 											border: none;

@@ -12,6 +12,8 @@ import AdminDashboard from "./routes/AdminDashboard";
 import UserHistory from "./routes/UserHistory";
 import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
+import QueueScreen from "./routes/QueueScreen";
+import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -36,6 +38,7 @@ import "./public/assets/css/theme.min.css";
 import "./public/assets/css/style.css";
 
 
+
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
@@ -52,25 +55,30 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { 
-        path: "user", 
-        element: <UserDashboard />,
+        path: "user", element: <UserDashboard />,
         children: [
-          // replacec history with customer table to test out
           { path: "history", element: <UserHistory /> }
         ]
-      },
-      { path: "admin",
-        element: <AdminDashboard />,
+      }, 
+      { 
+        path: "admin", element: <AdminDashboard />,
         children: [
           { path: "manage", element: <ServiceManage /> }
         ] 
       },
+
+      { path: "queue", element: <QueueScreen /> },
+      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
+
+
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+

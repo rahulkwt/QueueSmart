@@ -40,11 +40,10 @@ const ServiceManagement = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <h1>Add/Edit Services</h1>
-      {/*says whether the admin is editing or adding a service*/}
-      <h2 className="mb-4">Currently: {isEditing ? "Editing" : "Adding"}</h2>
-      
+  <div style={{ maxWidth: "800px", margin: "0 auto" }}> {/* Centers the form and keeps it at a readable width */}
+      <div className="mb-4">
+        <h1>Add/Edit Services</h1>
+      </div>
       {/* ================= UPDATED: FORM WRAPPED WITH TEMPLATE CLASSES ================= */}
       {/* Applied 'card-body lead-status' and shadow for template styling */}
       <div className="card p-4 mb-5 shadow-sm lead-status">
@@ -128,7 +127,12 @@ const ServiceManagement = () => {
       {/* table for the services */}
       <h4>Configured Services</h4>
       <div className="card p-4 mb-5 shadow-sm lead-status">
-        <div className="table-responsive">
+        <div className="table-responsive"
+            style={{
+              maxHeight: "400px",
+              overflowY: "auto"
+            }}
+        >
           <table className="table table-hover mt-3">
             <thead className="bg-transparent border-bottom">
               <tr>

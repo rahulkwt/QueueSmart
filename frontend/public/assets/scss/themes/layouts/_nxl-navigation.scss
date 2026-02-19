@@ -21,8 +21,8 @@
 		align-items: center;
 		height: $header-height;
 		background: $white;
-		border-right: 1px solid $border-color;
-		border-bottom: 1px solid $border-color;
+		border-right: 1px solid #e5e7eb;
+		border-bottom: 1px solid #e5e7eb;
 
 		.logo-sm {
 			display: none;
@@ -32,7 +32,7 @@
 	.navbar-content {
 		padding: 10px 0;
 		position: relative;
-		border-right: 1px solid $border-color;
+		border-right: 1px solid #e5e7eb;
 		height: calc(100vh - #{$header-height});
 
 		ul {
@@ -188,7 +188,7 @@
 			margin: 20px;
 			color: $brand-dark;
 			background: $gray-100;
-			border-color: $border-color;
+			border-color: #e5e7eb;
 		}
 	}
 }
@@ -302,7 +302,7 @@ html.minimenu {
 				position: absolute !important;
 				width: $navigation-width;
 				background-color: $white;
-				border-right: 1px solid $border-color;
+				border-right: 1px solid #e5e7eb;
 				transition: all 0.3s ease;
 
 				.nxl-caption,

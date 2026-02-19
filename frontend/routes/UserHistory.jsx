@@ -44,7 +44,8 @@ const userHistory = () => {
     const isAllSelected = selected.length === users.length;
 
   return (
-    <div className="card">
+    <div  className="card"
+    >
       <div className="card-body p-0">
         <div className="table-responsive">
           <table className="table table-hover mb-0" id="customerList">
