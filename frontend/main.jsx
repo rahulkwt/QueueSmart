@@ -10,6 +10,8 @@ import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
 import ErrorPage from "./routes/ErrorPage";
+import QueueScreen from "./routes/QueueScreen";
+import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -34,6 +36,7 @@ import "./public/assets/css/theme.min.css";
 import "./public/assets/css/style.css";
 
 
+
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
@@ -51,12 +54,19 @@ const router = createBrowserRouter([
     children: [
       { path: "user", element: <UserDashboard /> },
       { path: "admin", element: <AdminDashboard /> },
+
+      { path: "queue", element: <QueueScreen /> },
+      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
+
+
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+
