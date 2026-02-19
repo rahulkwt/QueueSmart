@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
 
 
 const Sidebar = ({ role }) => {
@@ -75,19 +74,28 @@ const Sidebar = ({ role }) => {
               <>
                 <li className="nxl-item">
                   <Link to="/portal/admin" className="nxl-link">
-                    <span className="nxl-mtext">Admin Dashboard</span>
-                  </Link>
-                </li>
-
-                <li className="nxl-item">
-                  <Link to="/portal/service-management" className="nxl-link">
-                    <span className="nxl-mtext">Service Management</span>
+                    <span className="nxl-micon">
+                            <i className="feather-airplay"></i>
+                        </span>
+                    <span className="nxl-mtext">Dashboard</span>
                   </Link>
                 </li>
 
                 <li className="nxl-item">
                   <Link to="/portal/queue-management" className="nxl-link">
+                    <span className="nxl-micon">
+                          <i className="feather-users"></i>
+                      </span>
                     <span className="nxl-mtext">Queue Management</span>
+                  </Link>
+                </li>
+
+                <li className="nxl-item">
+                  <Link to="/portal/service-management" className="nxl-link">
+                    <span className="nxl-micon">
+                      <i className="feather-layout"></i>
+                    </span>
+                    <span className="nxl-mtext">Service Management</span>
                   </Link>
                 </li>
               </>
