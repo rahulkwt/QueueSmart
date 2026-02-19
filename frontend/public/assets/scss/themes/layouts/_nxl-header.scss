@@ -11,7 +11,7 @@
 	color: $brand-light;
 	background: $white;
 	min-height: $header-height;
-	border-bottom: 1px solid $border-color;
+	border-bottom: 1px solid #e5e7eb;
 
 	.header-wrapper {
 		display: flex;
@@ -121,7 +121,7 @@
 				padding-bottom: 20px;
 				padding-left: 25px;
 				padding-right: 25px;
-				border-bottom: 1px solid $border-color;
+				border-bottom: 1px solid #e5e7eb;
 			}
 
 			.dropdown-item {
@@ -249,7 +249,7 @@
 				.nxl-mega-menu-tabs-content {
 					width: 100%;
 					padding: 30px 30px;
-					border-left: 1px solid $border-color;
+					border-left: 1px solid #e5e7eb;
 
 					.dropdown-item-title {
 						color: $darken;
@@ -288,7 +288,7 @@
 							display: flex;
 							align-items: center;
 							margin-bottom: 5px;
-							border: 1px dashed $border-color;
+							border: 1px dashed #e5e7eb;
 							transition: all 0.3s ease;
 
 							.menu-item-icon {
@@ -370,8 +370,8 @@
 									font-weight: $font-700;
 									padding: 15px 25px;
 									border-radius: $radius-none;
-									border-right: 1px solid $border-color;
-									border-bottom: 1px solid $border-color;
+									border-right: 1px solid #e5e7eb;
+									border-bottom: 1px solid #e5e7eb;
 									transition: all 0.3s ease;
 									display: flex;
 									align-items: center;
@@ -479,7 +479,7 @@
 								text-transform: $font-uppercase;
 								letter-spacing: $text-spacing-sm;
 								border-radius: $radius-sm;
-								border: 1px solid $border-color;
+								border: 1px solid #e5e7eb;
 								display: flex;
 								align-items: center;
 								justify-content: center;
@@ -508,7 +508,7 @@
 						margin-bottom: 10px;
 						font-size: $font-12;
 						border-radius: $radius-sm;
-						border: 1px dashed $border-color;
+						border: 1px dashed #e5e7eb;
 						transition: all 0.3s ease;
 
 						&:hover {
@@ -549,7 +549,7 @@
 			.timesheets-head {
 				padding: 20px;
 				border-radius: 2px 2px 0 0;
-				border-bottom: 1px solid $border-color;
+				border-bottom: 1px solid #e5e7eb;
 			}
 
 			.timesheets-body {
@@ -559,7 +559,7 @@
 			.timesheets-footer {
 				padding: 15px 20px;
 				border-radius: 0 0 2px 2px;
-				border-top: 1px solid $border-color;
+				border-top: 1px solid #e5e7eb;
 			}
 		}
 
@@ -570,7 +570,7 @@
 			.notifications-head {
 				padding: 20px;
 				border-radius: 2px 2px 0 0;
-				border-bottom: 1px solid $border-color;
+				border-bottom: 1px solid #e5e7eb;
 			}
 
 			.notifications-item {
@@ -580,7 +580,7 @@
 				transition: all 0.3s ease;
 
 				+.notifications-item {
-					border-top: 1px dashed $border-color;
+					border-top: 1px dashed #e5e7eb;
 				}
 
 				img {
@@ -607,7 +607,7 @@
 			.notifications-footer {
 				padding: 15px 20px;
 				border-radius: 0 0 2px 2px;
-				border-top: 1px solid $border-color;
+				border-top: 1px solid #e5e7eb;
 			}
 		}
 

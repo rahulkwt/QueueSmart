@@ -1,98 +1,141 @@
-import { useState } from "react";
+// import { useState } from "react";
 
 const Navbar = () => {
-  const [open, setOpen] = useState(false);
+  // const [open, setOpen] = useState(false);
 
   return (
-    <header
-      className="nxl-header"
-      style={{
-        height: "100px", // 👈 makes navbar taller
-        display: "flex",
-        alignItems: "center",
-        borderBottom: "1px solid #eee",
-        background: "#fff",
-      }}
-    >
-      <div className="navbar-wrapper d-flex justify-content-between align-items-center w-100 px-5">
-
-        {/* LEFT SIDE */}
-        <div>
-          <h2
-            className="mb-0"
-            style={{
-              fontWeight: "600",
-              fontSize: "28px", // 👈 bigger welcome text
-            }}
-          >
-            Welcome, User!
-          </h2>
+    <header className="nxl-header">
+      <div className="header-wrapper">
+        {/* Start Header Left */}
+        <div className="user-name my-auto">
+          <h3>Welcome,<span className="user-name"> User</span>!</h3>
         </div>
-
-        {/* RIGHT SIDE */}
-        <div className="d-flex align-items-center gap-5 position-relative">
-
-          {/* Notification Icon */}
-          <div
-            className="position-relative"
-            style={{ cursor: "pointer" }}
-            onClick={() => setOpen(!open)}
+        <div className="header-left d-flex align-items-center gap-4">
+          {/* Start nxl-head-mobile-toggler */}
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            className="nxl-head-mobile-toggler"
+            id="mobile-collapse"
           >
-            <i
-              className="feather-bell"
-              style={{ fontSize: "32px" }} // 👈 MUCH bigger bell
-            ></i>
-
-            {/* Red badge */}
-            <span
-              className="position-absolute bg-danger text-white rounded-circle d-flex align-items-center justify-content-center"
-              style={{
-                width: "24px",
-                height: "24px",
-                fontSize: "12px",
-                top: "-8px",
-                right: "-10px",
-              }}
-            >
-              3
-            </span>
-          </div>
-
-          {/* Notification Dropdown */}
-          {open && (
-            <div
-              className="card shadow position-absolute"
-              style={{
-                width: "340px",
-                top: "70px",
-                right: "90px",
-                zIndex: 999,
-                borderRadius: "12px",
-              }}
-            >
-              <div className="card-body">
-                <h5 className="mb-3">Notifications</h5>
-                <hr />
-                <p className="mb-2">New queue joined</p>
-                <p className="mb-2">Admin updated service</p>
-                <p className="mb-0">Reminder: Appointment soon</p>
+            <div className="hamburger hamburger--arrowturn">
+              <div className="hamburger-box">
+                <div className="hamburger-inner"></div>
               </div>
             </div>
-          )}
-
-          {/* Profile Picture */}
-          <img
-            src="https://randomuser.me/api/portraits/men/32.jpg"
-            alt="profile"
-            className="rounded-circle"
-            style={{
-              width: "60px", // 👈 bigger profile pic
-              height: "60px",
-              objectFit: "cover",
-            }}
-          />
-
+          </a>
         </div>
+        {/* End Header Left */}
+
+        {/* Start Header Right */}
+        <div className="header-right ms-auto">
+          <div className="d-flex align-items-center">
+            <div className="dropdown nxl-h-item">
+              <a
+                className="nxl-head-link me-3"
+                data-bs-toggle="dropdown"
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                role="button"
+                data-bs-auto-close="outside"
+              >
+                <i className="feather-bell"></i>
+              </a>
+
+              <div className="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu">
+                <div className="notifications-item">
+                  <div className="notifications-desc">
+                    <a
+                      href="#"
+                      onClick={(e) => e.preventDefault()}
+                      className="font-body text-truncate-2-line"
+                    >
+                      <span className="fw-semibold text-dark">We should
+                      talk about that at lunch!</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="notifications-item">
+                  <div className="notifications-desc">
+                    <a
+                      href="#"
+                      onClick={(e) => e.preventDefault()}
+                      className="font-body text-truncate-2-line"
+                    >
+                      <span className="fw-semibold text-dark">We should
+                      talk about that at lunch!</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="notifications-item">
+                  <div className="notifications-desc">
+                    <a
+                      href="#"
+                      onClick={(e) => e.preventDefault()}
+                      className="font-body text-truncate-2-line"
+                    >
+                      <span className="fw-semibold text-dark">We should
+                      talk about that at lunch!</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="dropdown nxl-h-item">
+              <a
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                data-bs-toggle="dropdown"
+                role="button"
+                data-bs-auto-close="outside"
+              >
+                <img
+                  src="/frontend/public/assets/images/avatar/1.png"
+                  alt="user-image"
+                  className="img-fluid user-avtar me-0"
+                />
+              </a>
+
+              <div className="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-user-dropdown">
+                <div className="dropdown-header">
+                  <div className="d-flex align-items-center">
+                    <img
+                      src="/frontend/public/assets/images/avatar/1.png"
+                      alt="user-image"
+                      className="img-fluid user-avtar"
+                    />
+                    <div>
+                      <h6 className="text-dark mb-0">Alexandra Della</h6>
+                      <span className="fs-12 fw-medium text-muted">
+                        alex@example.com
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dropdown-divider"></div>
+
+                <a href="javascript:void(0);" className="dropdown-item">
+                  <i className="feather-user"></i>
+                  <span>Profile Details</span>
+                </a>
+
+                <a
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="dropdown-item"
+                >
+                  <i className="feather-log-out"></i>
+                  <span>Logout</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* End Header Right */}
       </div>
     </header>
   );

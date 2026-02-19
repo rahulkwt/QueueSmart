@@ -38,7 +38,7 @@ const Homepage = () => {
                                             </p>
                                             <Link
                                                 to="/register"
-                                                className="btn hero-btn"
+                                                className="btn-home hero-btn-home"
                                             >
                                                 Appointment{" "}
                                                 <i className="ti-arrow-right"></i>
@@ -69,7 +69,7 @@ const Homepage = () => {
                                             </p>
                                             <Link
                                                 to="/register"
-                                                className="btn hero-btn"
+                                                className="btn-home hero-btn-home"
                                             >
                                                 Appointment{" "}
                                                 <i className="ti-arrow-right"></i>
@@ -127,20 +127,20 @@ const Homepage = () => {
                                     </p>
                                     {/* Buttons */}
 
-                                    <div className="about-btn1 mb-30">
+                                    <div className="about-btn-home1 mb-30">
                                         <Link
                                         to="/doctors"
-                                        className="btn about-btn"
+                                        className="btn-home about-btn-home"
                                         >
                                         Find Doctors{" "}
                                         <i className="ti-arrow-right"></i>
                                         </Link>
                                     </div>
 
-                                    <div className="about-btn1 mb-30">
+                                    <div className="about-btn-home1 mb-30">
                                         <Link
                                         to="/appointments"
-                                        className="btn about-btn2"
+                                        className="btn-home about-btn-home2"
                                         >
                                         Appointment{" "}
                                         <i className="ti-arrow-right"></i>
@@ -383,7 +383,7 @@ const DepartmentContent = () => {
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida.
           </p>
 
-          <a href="#" className="dep-btn">
+          <a href="#" className="dep-btn-home">
             Appointment<i className="ti-arrow-right"></i>
           </a>
 
