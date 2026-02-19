@@ -9,9 +9,8 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
-import HistoryPage from "./routes/HistoryPage";
+import UserHistory from "./routes/UserHistory";
 import ServiceManage from "./routes/ServiceManage";
-import CustomerTable from "./routes/CustomerTable"
 import ErrorPage from "./routes/ErrorPage";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
@@ -57,7 +56,7 @@ const router = createBrowserRouter([
         element: <UserDashboard />,
         children: [
           // replacec history with customer table to test out
-          { path: "history", element: <CustomerTable /> }
+          { path: "history", element: <UserHistory /> }
         ]
       },
       { path: "admin",
