@@ -143,7 +143,7 @@ const ServiceManagement = () => {
                 <tr key={service.id}>
                   <td>
                     <div><strong>{service.name}</strong></div>
-                    <small className="text-muted">{service.description}</small>
+                    <small className="fs-12 fw-normal text-muted text-truncate-1-line">{service.description}</small>
                   </td>
                   <td>{service.duration} mins</td>
                   <td>
