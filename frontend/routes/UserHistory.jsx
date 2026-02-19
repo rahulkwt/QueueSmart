@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const users = [
   {
@@ -19,10 +19,32 @@ const users = [
   }
 ];
 
-// this is a React component to go in the User dash board
+  // this is a React component to go in the User dash board
 const userHistory = () => {
+    const [selected, setSelected] = useState([]);
+
+    // toggle all
+    const handleSelectAll = (e) => {
+      if (e.target.checked) {
+        setSelected(users.map(u => u.id));
+      } else {
+        setSelected([]);
+      }
+    };
+
+    // toggle single row
+    const handleSelectOne = (id) => {
+      setSelected(prev =>
+        prev.includes(id)
+          ? prev.filter(i => i !== id)
+          : [...prev, id]
+      );
+    };
+
+    const isAllSelected = selected.length === users.length;
+
   return (
-    <div className="card stretch stretch-full">
+    <div className="card">
       <div className="card-body p-0">
         <div className="table-responsive">
           <table className="table table-hover mb-0" id="customerList">
@@ -32,7 +54,13 @@ const userHistory = () => {
                 {/*checkbox first*/}
                 <th style={{ width: 50 }} className="text-center">
                   <div className="custom-control custom-checkbox">
-                    <input type="checkbox" className="custom-control-input" id="checkAllCustomer" />
+                    <input
+                      type="checkbox"
+                      className="custom-control-input"
+                      id="checkAllCustomer"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                    />
                     <label className="custom-control-label d-inline-block" htmlFor="checkAllCustomer"></label>
                   </div>
                 </th>
@@ -51,7 +79,13 @@ const userHistory = () => {
                   <tr className="align-middle">
                     <td className="text-center border-bottom-0">
                       <div className="custom-control custom-checkbox">
-                        <input type="checkbox" className="custom-control-input" id={`checkBox_${user.id}`} />
+                        <input
+                          type="checkbox"
+                          className="custom-control-input"
+                          id={`checkBox_${user.id}`}
+                          checked={selected.includes(user.id)}
+                          onChange={() => handleSelectOne(user.id)}
+                        />
                         <label className="custom-control-label d-inline-block" htmlFor={`checkBox_${user.id}`}></label>
                       </div>
                     </td>
