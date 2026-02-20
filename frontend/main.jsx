@@ -9,6 +9,8 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
+import UserHistory from "./routes/UserHistory";
+import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
 import QueueScreen from "./routes/QueueScreen";
 import QueueManagement from "./routes/QueueManagement";
@@ -48,12 +50,22 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/portal",
+    path: "portal",
     element: <PortalLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "user", element: <UserDashboard /> },
-      { path: "admin", element: <AdminDashboard /> },
+      { 
+        path: "user", element: <UserDashboard />,
+        children: [
+          { path: "history", element: <UserHistory /> }
+        ]
+      }, 
+      { 
+        path: "admin", element: <AdminDashboard />,
+        children: [
+          { path: "manage", element: <ServiceManage /> }
+        ] 
+      },
 
       { path: "queue", element: <QueueScreen /> },
       { path: "queue-management", element: <QueueManagement /> },

@@ -6,7 +6,6 @@ const UserDashboard = () => {
         <>
             <div>
                 <h1>Welcome to the UserDashboard</h1>
-                {/* <Link to="/dashboard">Go to Dashboard</Link> */}
             </div>
         </>
     );
