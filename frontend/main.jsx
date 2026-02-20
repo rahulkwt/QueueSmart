@@ -9,7 +9,11 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
+import UserHistory from "./routes/UserHistory";
+import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
+import QueueScreen from "./routes/QueueScreen";
+import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -25,9 +29,14 @@ import "./public/assets/css/animate.min.css";
 // import "./public/assets/css/animated-headline.css";
 import "./public/assets/css/nice-select.css";
 
+// 4. Vendor CSS
+import "./public/assets/vendors/css/vendors.min.css";
+
 // 4. Template main style LAST (VERY IMPORTANT)
 import "./public/assets/css/bootstrap.min.css";
+import "./public/assets/css/theme.min.css";
 import "./public/assets/css/style.css";
+
 
 
 const router = createBrowserRouter([
@@ -41,18 +50,35 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/portal",
+    path: "portal",
     element: <PortalLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "user", element: <UserDashboard /> },
-      { path: "admin", element: <AdminDashboard /> },
+      { 
+        path: "user", element: <UserDashboard />,
+        children: [
+          { path: "history", element: <UserHistory /> }
+        ]
+      }, 
+      { 
+        path: "admin", element: <AdminDashboard />,
+        children: [
+          { path: "manage", element: <ServiceManage /> }
+        ] 
+      },
+
+      { path: "queue", element: <QueueScreen /> },
+      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
+
+
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+

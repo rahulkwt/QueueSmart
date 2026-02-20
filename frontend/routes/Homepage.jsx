@@ -1,12 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../utils/NavbarPublic.jsx";
 
 const Homepage = () => {
     return (
         <>
             <div>
-                <Navbar />
                 {/* <Link to="/dashboard">Go to Dashboard</Link> */}
                 <div className="slider-area position-relative">
 
@@ -40,7 +38,7 @@ const Homepage = () => {
                                             </p>
                                             <Link
                                                 to="/register"
-                                                className="btn hero-btn"
+                                                className="btn-home hero-btn-home"
                                             >
                                                 Appointment{" "}
                                                 <i className="ti-arrow-right"></i>
@@ -71,7 +69,7 @@ const Homepage = () => {
                                             </p>
                                             <Link
                                                 to="/register"
-                                                className="btn hero-btn"
+                                                className="btn-home hero-btn-home"
                                             >
                                                 Appointment{" "}
                                                 <i className="ti-arrow-right"></i>
@@ -129,20 +127,20 @@ const Homepage = () => {
                                     </p>
                                     {/* Buttons */}
 
-                                    <div className="about-btn1 mb-30">
+                                    <div className="about-btn-home1 mb-30">
                                         <Link
                                         to="/doctors"
-                                        className="btn about-btn"
+                                        className="btn-home about-btn-home"
                                         >
                                         Find Doctors{" "}
                                         <i className="ti-arrow-right"></i>
                                         </Link>
                                     </div>
 
-                                    <div className="about-btn1 mb-30">
+                                    <div className="about-btn-home1 mb-30">
                                         <Link
                                         to="/appointments"
-                                        className="btn about-btn2"
+                                        className="btn-home about-btn-home2"
                                         >
                                         Appointment{" "}
                                         <i className="ti-arrow-right"></i>
@@ -158,14 +156,14 @@ const Homepage = () => {
 
                                 <div className="about-font-img d-none d-lg-block">
                                     <img
-                                    src="/frontend/public/assets/img/gallery/about2.png"
+                                    src="/frontend/public/assets/images/gallery/about2.png"
                                     alt="Doctor working"
                                     />
                                 </div>
 
                                 <div className="about-back-img">
                                     <img
-                                    src="/frontend/public/assets/img/gallery/about1.png"
+                                    src="/frontend/public/assets/images/gallery/about1.png"
                                     alt="Medical equipment"
                                     />
                                 </div>
@@ -385,7 +383,7 @@ const DepartmentContent = () => {
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida.
           </p>
 
-          <a href="#" className="dep-btn">
+          <a href="#" className="dep-btn-home">
             Appointment<i className="ti-arrow-right"></i>
           </a>
 
@@ -395,7 +393,7 @@ const DepartmentContent = () => {
       <div className="col-lg-5">
         <div className="dept_thumb">
           <img
-            src="/frontend/public/assets/img/gallery/department_man.png"
+            src="/frontend/public/assets/images/gallery/department_man.png"
             alt=""
           />
         </div>
