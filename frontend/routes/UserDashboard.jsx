@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const UserDashboard = () => {
     return (
@@ -7,9 +7,6 @@ const UserDashboard = () => {
             <div>
                 <h1>Welcome to the UserDashboard</h1>
             </div>
-
-            <hr />
-            <Outlet />
         </>
     );
 };
