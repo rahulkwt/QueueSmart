@@ -5,7 +5,6 @@ const AdminDashboard = () => {
     return (
         <>
             {/*connect to the ServiceManage, added by Erick*/}
-            <Outlet />
         </>
     );
 };
