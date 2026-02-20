@@ -25,7 +25,7 @@ const QueueStatus = () => {
   }, [position]);
 
   return (
-    <div className="container mt-5">
+    <div className="">
       <h2 className="mb-4">
         {service} Queue Status
       </h2>
