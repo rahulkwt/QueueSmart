@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const UserDashboard = () => {
   // Mock data – replace with real API calls later
-  const user = { name: "Fake User", patientId: "P-20489" };
+  const user = { patientId: "P-20489" };
 
   const activeQueue = {
     service: "General Consultation",
@@ -53,7 +53,7 @@ const UserDashboard = () => {
       {/* Welcome Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="mb-0 fw-bold">Welcome back, {user.name}</h4>
+          <h4 className="mb-0 fw-bold">Welcome back {user.name}</h4>
           <small className="text-muted">Patient ID: {user.patientId}</small>
         </div>
         <span className="badge bg-primary-subtle text-primary border px-3 py-2" style={{ fontSize: "0.85rem" }}>
