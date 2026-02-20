@@ -45,7 +45,7 @@ const userHistory = () => {
 
   return (
     <div  className="card"
-          style = {{maxWidth: "800px"}}
+          style = {{maxWidth: "1000px"}}
     >               {/*THIS STYLE IS TO BE REMOVED ONCE PORTAL LAYOUT IS FIXED
     style = {{maxWidth: "800px", margin: "0 auto"}}*/}
       <div className="card-body p-0">

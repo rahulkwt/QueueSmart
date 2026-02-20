@@ -46,7 +46,7 @@ const ServiceManagement = () => {
   /*THIS IS A TEMPORARY PADDING FOR THE SCREENSHOT, REMOVE ONCE LAYOUT IS FIXED*/
   /*if layout is fixed, remove paddingTop and any style here meant as a placeholder
   paddingTop: "20px", margin: "0 auto"*/
-  <div style={{ maxWidth: "800px", margin: "0 auto" }}> {/* Centers the form and keeps it at a readable width */}
+  <div style={{ maxWidth: "1000px" }}> {/* Centers the form and keeps it at a readable width */}
       <div className="mb-4">
         <h1>Add/Edit Services</h1>
       </div>
