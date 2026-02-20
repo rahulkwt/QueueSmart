@@ -10,33 +10,34 @@ const PortalLayout = () => {
 
   return (
   <>
-  <div style={{ display: "flex", minHeight: "100vh" }}>
-    
-    {/*Edited layout in order to make the outlet content go in the */}
-    {/*correct place using flex*/}
-    {/* Sidebar (fixed width) */}
-    <div style={{ width: "200px", flexShrink: 0 }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+      }}
+    >
+      {/* Sidebar */}
       <Sidebar role={isAdmin ? "admin" : "user"} />
-    </div>
 
-    {/* Content area */}
-    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-      
-      <Navbar />
-
+      {/* Main Content Area */}
       <div
         style={{
           flex: 1,
-          padding: "140px",
-          marginTop: "80px", // navbar height
-          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <Outlet />
+        <Navbar />
+        <div style={{ flex: 1 ,
+          position: "fixed",
+          left: "200px",
+          right: "0",
+        }}>
+          <Outlet />
+        </div>
+        {/* <Outlet /> */}
       </div>
-
     </div>
-  </div>
 
   </>
 );

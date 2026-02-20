@@ -2,9 +2,12 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 const ServiceManagement = () => {
+  // I AM COMMENTING OUT PRIORITY TO PRESERVE
+  // DROPDOWN FEATURE FOR LATER
+  // commenting out priority everywhere, including html
   // sets up how services will be formatted and detailed
   const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", description: "Standard check-up", duration: 20, priority: "Medium" },
+    { id: 1, name: "General Consultation", description: "Standard check-up", duration: 20/*, priority: "Medium"*/ },
   ]);
 
   // form data for the dynamic table below in HTML
@@ -12,7 +15,6 @@ const ServiceManagement = () => {
     name: "",
     description: "",
     duration: "",
-    priority: "Low",
   });
 
   const [isEditing, setIsEditing] = useState(null);
@@ -29,7 +31,7 @@ const ServiceManagement = () => {
       // Create logic
       setServices([...services, { ...formData, id: Date.now() }]);
     }
-    setFormData({ name: "", description: "", duration: "", priority: "Low" });
+    setFormData({ name: "", description: "", duration: ""/*, priority: "Low"*/ });
   };
 
   // boolean to tell whether the admin is editing or adding
@@ -39,7 +41,11 @@ const ServiceManagement = () => {
     setIsEditing(service.id);
   };
 
+  // in html, commenting out priority
   return (
+  /*THIS IS A TEMPORARY PADDING FOR THE SCREENSHOT, REMOVE ONCE LAYOUT IS FIXED*/
+  /*if layout is fixed, remove paddingTop and any style here meant as a placeholder
+  paddingTop: "20px", margin: "0 auto"*/
   <div style={{ maxWidth: "800px", margin: "0 auto" }}> {/* Centers the form and keeps it at a readable width */}
       <div className="mb-4">
         <h1>Add/Edit Services</h1>
@@ -73,7 +79,7 @@ const ServiceManagement = () => {
           </div>
 
           {/* define the input for the service's expected duration */}
-          <div className="row">
+          <div className="row align-items-end">
             <div className="col-md-6 mb-3">
               <label className="form-label">Expected Duration* (minutes)</label>
               <input
@@ -85,8 +91,33 @@ const ServiceManagement = () => {
               />
             </div>
 
+            <div className="col-md-6 mb-3 d-flex gap-2">            
+              <button
+                type="submit"
+                className={`btn btn-sm btn-outline-secondary`}
+                style={{ height: "45px", width: "120px", padding: "6px 12px", color: "white" }}
+              >
+                {isEditing ? "Update" : "Add Service"}
+              </button>
+              
+              {isEditing && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  style={{ height: "45px", width: "120px", visibility: isEditing ? "visible" : "hidden", padding: "6px 12px"}} // keeps space
+                  onClick={() => {
+                    setIsEditing(null);
+                    setFormData({ name: "", description: "", duration: "" });
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
             {/* assign a priority level for the service */}
-            <div className="col-md-6 mb-3">
+
+          {/*  <div className="col-md-6 mb-3">
               <label className="form-label">Priority Level</label>
               <select
                 className="form-select py-1"
@@ -98,28 +129,9 @@ const ServiceManagement = () => {
                 <option value="High">High</option>
               </select>
             </div>
-          </div>
-
+          */}
           {/* change the submit form button based on whether 
              admin is editing or adding */}
-          <button
-            type="submit"
-            className={`btn ${isEditing ? 'btn-warning' : 'btn-light-brand'}`} // updated to template button
-          >
-            {isEditing ? "Update Service" : "Add Service"}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="btn ms-3"
-              onClick={() => {
-                setIsEditing(null);
-                setFormData({ name: "", description: "", duration: "", priority: "Low" });
-              }}
-            >
-              Cancel
-            </button>
-          )}
         </form>
       </div>
       {/* ================= END UPDATED FORM ================= */}
@@ -138,7 +150,7 @@ const ServiceManagement = () => {
               <tr>
                 <th>Name</th>
                 <th>Duration</th>
-                <th>Priority</th>
+                {/*<th>Priority</th>*/}
                 <th></th>
               </tr>
             </thead>
@@ -150,7 +162,7 @@ const ServiceManagement = () => {
                     <small className="fs-12 fw-normal text-muted text-truncate-1-line">{service.description}</small>
                   </td>
                   <td>{service.duration} mins</td>
-                  <td>
+                  {/*<td>
                     <span
                       className={`badge ${
                         service.priority === 'High'
@@ -162,7 +174,7 @@ const ServiceManagement = () => {
                     >
                       {service.priority}
                     </span>
-                  </td>
+                  </td>*/}
                   <td>
                     <button
                       type="button"
