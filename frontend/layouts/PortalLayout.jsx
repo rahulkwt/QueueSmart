@@ -30,8 +30,12 @@ const PortalLayout = () => {
         <Navbar />
         <div style={{ flex: 1 ,
           position: "fixed",
-          left: "200px",
+          left: "280px",
           right: "0",
+          overflowY: "auto",
+          height: "100%",
+          padding: "85px 20px 20px 20px",
+          // marginTop: "45px",
         }}>
           <Outlet />
         </div>

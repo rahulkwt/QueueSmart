@@ -28,7 +28,7 @@ const JoinQueue = () => {
   }, [position]);
 
   return (
-    <div className="container mt-5">
+    <div className="">
 
       {/* Title */}
       <h2 className="mb-4">{service} Queue</h2>

@@ -56,7 +56,7 @@ const QueueManagement = () => {
   };
 
   return (
-    <div className="container mt-5">
+    <div className="">
       <h2 className="mb-4">Queue Management</h2>
 
       {/* Select Service */}
