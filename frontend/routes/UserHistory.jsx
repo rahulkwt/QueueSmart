@@ -1,27 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const users = [
-  {
-    id: 1,
-    service: "General Consultation",
-    doctor: "Dr. Albert Einstein",
-    date: "09-25-2025",
-    notes: "Normal results. Patient advised to return in 6 months for a follow-up.",
-    status: "Completed"
-  },
-  {
-    id: 2,
-    service: "Emergency",
-    doctor: "Dr. Walt Seuss",
-    date: "12-02-2025",
-    notes: "Stabilized. Transferred to observation ward.",
-    status: "Completed"
-  }
-];
+// removed mock data from here
 
-  // this is a React component to go in the User dash board
-const userHistory = () => {
+// this is a React component to go in the User dash board
+const UserHistory = () => {
+    const [users, setUsers] = useState([]); // NEW
     const [selected, setSelected] = useState([]);
+
+    // NEW
+    useEffect(() => {
+      fetch("http://localhost:3000/api/history")
+        .then(res => res.json())
+        .then(data => setUsers(data));
+    }, []);
 
     // toggle all
     const handleSelectAll = (e) => {
@@ -125,4 +116,4 @@ const userHistory = () => {
   );
 };
 
-export default userHistory;
+export default UserHistory;
