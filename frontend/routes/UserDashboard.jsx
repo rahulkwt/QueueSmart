@@ -24,12 +24,6 @@ const UserDashboard = () => {
     { id: 5, name: "Emergency Triage", icon: "feather-alert-triangle", wait: 0, open: false },
   ];
 
-  const notifications = [
-    { id: 1, type: "info", message: "You are #4 in line for General Consultation.", time: "2 min ago" },
-    { id: 2, type: "success", message: "Your Lab Work results are ready to review.", time: "1 hr ago" },
-    { id: 3, type: "warning", message: "Pharmacy Pickup closing at 5:00 PM today.", time: "3 hr ago" },
-  ];
-
   const statusColor = {
     waiting: "bg-warning-subtle text-warning",
     almost_ready: "bg-info-subtle text-info",
@@ -197,33 +191,8 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* Notifications */}
+        {/* Available Services */}
         <div className="col-lg-7">
-          <div className="card shadow-sm border-0 mb-3">
-            <div className="card-header bg-white d-flex justify-content-between align-items-center">
-              <h6 className="mb-0 fw-bold">
-                <i className="feather-bell me-2 text-info"></i>Notifications
-              </h6>
-              <button className="btn btn-secondary btn-sm text-white px-3">Mark All Read</button>
-            </div>
-            <div className="card-body p-0">
-              {notifications.map((n) => {
-                const iconMap = { info: "feather-info", success: "feather-check-circle", warning: "feather-alert-circle" };
-                const colorMap = { info: "text-info", success: "text-success", warning: "text-warning" };
-                return (
-                  <div key={n.id} className="d-flex align-items-start gap-3 px-3 py-3 border-bottom">
-                    <i className={`${iconMap[n.type]} ${colorMap[n.type]} mt-1`}></i>
-                    <div className="flex-grow-1">
-                      <div className="small">{n.message}</div>
-                      <div className="text-muted" style={{ fontSize: "0.75rem" }}>{n.time}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Available Services */}
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white d-flex justify-content-between align-items-center">
               <h6 className="mb-0 fw-bold">

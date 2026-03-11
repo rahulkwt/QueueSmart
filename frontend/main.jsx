@@ -9,6 +9,7 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
+import AdminHome from "./routes/AdminHome";
 import UserHistory from "./routes/UserHistory";
 import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
       { 
         path: "admin", element: <AdminDashboard />,
         children: [
+          { index: true, element: <AdminHome /> },
           { path: "manage", element: <ServiceManage /> }
         ] 
       },
