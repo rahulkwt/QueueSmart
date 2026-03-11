@@ -9,9 +9,17 @@ const UserHistory = () => {
 
     // NEW
     useEffect(() => {
-      fetch("http://localhost:3000/api/history")
-        .then(res => res.json())
-        .then(data => setUsers(data));
+      const fetchUsers = () => {
+        fetch("http://localhost:3000/api/history")
+          .then(res => res.json())
+          .then(data => setUsers(data));
+      };
+
+      fetchUsers(); // initial call
+
+      const interval = setInterval(fetchUsers, 5000); // every 5 seconds
+
+      return () => clearInterval(interval); // cleanup on unmount
     }, []);
 
     // toggle all
