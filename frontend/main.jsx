@@ -9,6 +9,7 @@ import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
 import UserDashboard from "./routes/UserDashboard";
 import AdminDashboard from "./routes/AdminDashboard";
+import AdminHome from "./routes/AdminHome";
 import UserHistory from "./routes/UserHistory";
 import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
@@ -16,6 +17,7 @@ import QueueScreen from "./routes/QueueScreen";
 import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
+import UserHome from "./routes/UserHome";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -57,12 +59,14 @@ const router = createBrowserRouter([
       { 
         path: "user", element: <UserDashboard />,
         children: [
+          { index: true, element: <UserHome /> },
           { path: "history", element: <UserHistory /> }
         ]
       }, 
       { 
         path: "admin", element: <AdminDashboard />,
         children: [
+          { index: true, element: <AdminHome /> },
           { path: "manage", element: <ServiceManage /> }
         ] 
       },
