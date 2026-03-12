@@ -17,6 +17,7 @@ import QueueScreen from "./routes/QueueScreen";
 import QueueManagement from "./routes/QueueManagement";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
+import UserHome from "./routes/UserHome";
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
       { 
         path: "user", element: <UserDashboard />,
         children: [
+          { index: true, element: <UserHome /> },
           { path: "history", element: <UserHistory /> }
         ]
       }, 
