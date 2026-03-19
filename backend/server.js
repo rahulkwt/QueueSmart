@@ -19,6 +19,10 @@ app.use("/api", serviceRoutes); // mount service routes: /api/services
 // data is now able to be fetched
 const PORT = 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+server.on("error", (err) => {
+  console.error("Server error:", err);
 });

@@ -1,28 +1,33 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const JoinQueue = () => {
-  const service = "Consultation";
+  const { service } = useParams();
+  const navigate = useNavigate();
+  const decodedService = decodeURIComponent(service);
 
   const [joined, setJoined] = useState(false);
   const [priority, setPriority] = useState("Low");
-  const [position, setPosition] = useState(4);
-  const [estimatedWait, setEstimatedWait] = useState(20);
-  const [peopleInQueue, setPeopleInQueue] = useState(3);
+  const [position, setPosition] = useState(null);
+  const [estimatedWait, setEstimatedWait] = useState(null);
+  const [peopleInQueue, setPeopleInQueue] = useState(null);
   const [status, setStatus] = useState("Waiting");
   const [queueData, setQueueData] = useState([]);
   const [queueId, setQueueId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   const fetchQueue = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/api/services");
-      setQueueData(response.data);
-      setPeopleInQueue(response.data.length);
+      const response = await axios.get(`http://localhost:3000/api/services?service=${encodeURIComponent(decodedService)}`);
+      const active = response.data.filter((item) => item.isActive !== false);
+      setQueueData(active);
+      setPeopleInQueue(active.length);
+      return active.length;
     } catch (error) {
       console.error("Error fetching queue:", error);
+      return 0;
     }
   };
 
@@ -31,18 +36,18 @@ const JoinQueue = () => {
       setLoading(true);
 
       const response = await axios.post("http://localhost:3000/api/services", {
-        service,
+        service: decodedService,
         priority,
         date: new Date().toISOString(),
         status: "Waiting",
       });
 
-      console.log("Joined queue:", response.data);
-
       setQueueId(response.data.id);
       setJoined(true);
 
-      await fetchQueue();
+      const count = await fetchQueue();
+      setPosition(count);
+      setEstimatedWait(count * 5);
     } catch (error) {
       console.error("Error joining queue:", error);
     } finally {
@@ -61,16 +66,14 @@ const JoinQueue = () => {
           leftReason: "User left queue",
           leftBy: "user",
         });
-
-        console.log("Left queue for id:", queueId);
       }
     } catch (error) {
       console.error("Error leaving queue:", error);
     } finally {
       setJoined(false);
       setQueueId(null);
-      setPosition(4);
-      setEstimatedWait(20);
+      setPosition(null);
+      setEstimatedWait(null);
       setStatus("Waiting");
       await fetchQueue();
       setLoading(false);
@@ -79,42 +82,71 @@ const JoinQueue = () => {
 
   useEffect(() => {
     fetchQueue();
-  }, []);
+  }, [decodedService]);
 
   useEffect(() => {
     if (!joined) return;
 
     const interval = setInterval(() => {
-      setPosition((prev) => (prev > 1 ? prev - 1 : 1));
+      setPosition((prev) => (prev > 0 ? prev - 1 : 0));
       setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
-      setPeopleInQueue((prev) => (prev > 1 ? prev - 1 : 1));
-    }, 3001);
+      setQueueData((prev) => {
+        const [first, ...rest] = prev;
+        if (first) {
+          axios.patch(`http://localhost:3000/api/services/${first.id}/leave`, {
+            status: "Completed",
+            leftReason: "Served",
+            leftBy: "system",
+          })
+            .then(() => fetchQueue())
+            .catch((err) => console.error("Error completing queue entry:", err));
+        }
+        return rest;
+      });
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [joined]);
 
   useEffect(() => {
-    if (position > 2) setStatus("Waiting");
-    else if (position === 2) setStatus("Almost Ready");
+    if (position === null) return;
+    if (position > 1) setStatus("Waiting");
+    else if (position === 1) setStatus("Almost Ready");
     else setStatus("Served");
   }, [position]);
 
+  useEffect(() => {
+    if (status !== "Served") return;
+    const timeout = setTimeout(async () => {
+      setJoined(false);
+      setQueueId(null);
+      setPosition(null);
+      setEstimatedWait(null);
+      setStatus("Waiting");
+      await fetchQueue();
+    }, 2000);
+    return () => clearTimeout(timeout);
+  }, [status]);
+
   return (
     <div className="">
-      <h2 className="mb-4">{service} Queue</h2>
+      <button className="btn btn-outline-secondary mb-3" onClick={() => navigate("/portal/user")}>
+        ← Back to Dashboard
+      </button>
+      <h2 className="mb-4">{decodedService} Queue</h2>
 
       <div className="row mb-4">
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>People in Queue</h5>
-            <p className="fs-4 mb-0">{peopleInQueue}</p>
+            <p className="fs-4 mb-0">{peopleInQueue ?? 0}</p>
           </div>
         </div>
 
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
-            <p className="fs-4 mb-0">{estimatedWait} minutes</p>
+            <p className="fs-4 mb-0">{estimatedWait ?? 0} minutes</p>
           </div>
         </div>
       </div>
@@ -150,7 +182,7 @@ const JoinQueue = () => {
             onClick={joinQueue}
             disabled={loading}
           >
-            {loading ? "Joining..." : `Join ${service} Queue`}
+            {loading ? "Joining..." : `Join ${decodedService} Queue`}
           </button>
         </div>
       ) : (

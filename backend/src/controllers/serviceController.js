@@ -1,7 +1,13 @@
 import { serviceData } from "../mock/serviceData.js";
 
 export const getService = (req, res) => {
-    const activeServices = serviceData.filter((item) => item.isActive !== false);
+    const { service } = req.query;
+    const activeServices = serviceData.filter((item) => {
+        if (item.isActive === false) return false;
+        if (item.status === "Completed") return false;
+        if (service) return item.service === service;
+        return true;
+    });
     res.json(activeServices);
 };
 
@@ -20,7 +26,7 @@ export const addService = (req, res) => {
 
 export const leaveService = (req, res) => {
   const { id } = req.params;
-  const { leftReason, leftBy } = req.body;
+  const { leftReason, leftBy, status } = req.body;
 
   const service = serviceData.find((item) => item.id === Number(id));
 
@@ -29,7 +35,7 @@ export const leaveService = (req, res) => {
   }
 
   service.isActive = false;
-  service.status = "Aborted";
+  service.status = status || "Aborted";
   service.leftReason = leftReason || "User left queue";
   service.leftBy = leftBy || "user";
 

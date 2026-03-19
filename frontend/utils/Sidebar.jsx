@@ -50,7 +50,7 @@ const Sidebar = ({ role }) => {
                         <i className="feather-users"></i>
                     </span>
                     <span className="nxl-mtext">
-                        Join Queue/Queue Status
+                        Queue Status
                     </span>
                   </Link>
                 </li>

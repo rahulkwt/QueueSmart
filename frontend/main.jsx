@@ -61,7 +61,7 @@ const router = createBrowserRouter([
         path: "user", element: <UserDashboard />,
         children: [
           { index: true, element: <UserHome /> },
-          { path: "queue", element: <QueueScreen /> },
+          { path: "queue/:service", element: <QueueScreen /> },
           { path: "history", element: <UserHistory /> }
         ]
       }, 
