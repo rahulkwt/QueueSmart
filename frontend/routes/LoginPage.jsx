@@ -94,7 +94,7 @@ const LoginPage = () => {
 
                             <div className="mt-5 text-muted">
                             <span> Don't have an account?</span>{" "}
-                            <a href="auth-register-cover.html" className="fw-bold">
+                            <a href="/register" className="fw-bold">
                                 Create an Account
                             </a>
                             </div>
