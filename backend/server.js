@@ -7,6 +7,7 @@ import historyRoutes from "./src/routes/historyRoutes.js";
 const app = express();
 
 app.use(cors());   // allow cross-origin requests
+app.use(express.json()); //needed to parse POST request bodies
 
 app.use("/api", historyRoutes);
 
