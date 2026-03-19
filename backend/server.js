@@ -1,5 +1,3 @@
-// FOURTH
-
 import express from "express";
 import cors from "cors";
 import historyRoutes from "./src/routes/historyRoutes.js";

@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const JoinQueue = () => {
-  const service = "Consultation"; // 👈 change this per screen
+  const service = "Consultation";
 
   const [joined, setJoined] = useState(false);
   const [priority, setPriority] = useState("Low");
@@ -10,17 +11,94 @@ const JoinQueue = () => {
   const [estimatedWait, setEstimatedWait] = useState(20);
   const [peopleInQueue, setPeopleInQueue] = useState(3);
   const [status, setStatus] = useState("Waiting");
+  const [queueData, setQueueData] = useState([]);
+  const [queueId, setQueueId] = useState(null);
 
+  // GET current active queue data from backend
+  const fetchQueue = async () => {
+    try {
+      const response = await axios.get("http://localhost:5001/api/services");
+      setQueueData(response.data);
+      setPeopleInQueue(response.data.length);
+    } catch (error) {
+      console.error("Error fetching queue:", error);
+    }
+  };
+
+  // POST a new queue entry to backend
+  const joinQueue = async () => {
+    try {
+      const response = await axios.post("http://localhost:5001/api/services", {
+        service: service,
+        priority: priority,
+        date: new Date().toISOString(),
+        status: "Waiting"
+      });
+
+      console.log("Joined queue:", response.data);
+
+      // save the id of the queue record that was just created
+      setQueueId(response.data.id);
+
+      // switch screen to joined view
+      setJoined(true);
+
+      // refresh queue list from backend
+      fetchQueue();
+    } catch (error) {
+      console.error("Error joining queue:", error);
+    }
+  };
+
+  // PATCH the queue entry instead of deleting it
+  // this is soft delete: mark it as left/aborted in backend
+  const leaveQueue = async () => {
+    try {
+      if (!queueId) {
+        console.error("No queue id found.");
+        return;
+      }
+
+      await axios.patch(`http://localhost:5001/api/services/${queueId}/leave`, {
+        leftReason: "User left queue",
+        leftBy: "user"
+      });
+
+      console.log("Left queue for id:", queueId);
+
+      // reset frontend state
+      setJoined(false);
+      setQueueId(null);
+      setPosition(4);
+      setEstimatedWait(20);
+      setStatus("Waiting");
+
+      // refresh queue so removed/aborted user no longer shows in active queue
+      fetchQueue();
+    } catch (error) {
+      console.error("Error leaving queue:", error);
+    }
+  };
+
+  // load queue when component first opens
+  useEffect(() => {
+    fetchQueue();
+  }, []);
+
+  // fake queue movement after user joins
   useEffect(() => {
     if (!joined) return;
+
     const interval = setInterval(() => {
       setPosition((prev) => (prev > 1 ? prev - 1 : 1));
       setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
       setPeopleInQueue((prev) => (prev > 1 ? prev - 1 : 1));
     }, 5000);
+
     return () => clearInterval(interval);
   }, [joined]);
 
+  // update displayed status based on fake position
   useEffect(() => {
     if (position > 2) setStatus("Waiting");
     else if (position === 2) setStatus("Almost Ready");
@@ -29,18 +107,16 @@ const JoinQueue = () => {
 
   return (
     <div className="">
-
-      {/* Title */}
       <h2 className="mb-4">{service} Queue</h2>
 
-      {/* Queue Info - always visible */}
       <div className="row mb-4">
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>People in Queue</h5>
-            <p className="fs-4 mb-0">{joined ? peopleInQueue + 1 : peopleInQueue}</p>
+            <p className="fs-4 mb-0">{peopleInQueue}</p>
           </div>
         </div>
+
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
@@ -49,11 +125,11 @@ const JoinQueue = () => {
         </div>
       </div>
 
-      {/* Before joining */}
       {!joined ? (
         <div className="card p-3 mb-4">
           <h5 className="mb-3">Join this Queue</h5>
           <label className="form-label">Select Priority</label>
+
           <div className="d-flex gap-3 mb-3">
             {["Low", "Medium", "High"].map((level) => (
               <button
@@ -62,8 +138,10 @@ const JoinQueue = () => {
                 onClick={() => setPriority(level)}
                 className={`btn ${
                   priority === level
-                    ? level === "High" ? "btn-danger"
-                      : level === "Medium" ? "btn-warning"
+                    ? level === "High"
+                      ? "btn-danger"
+                      : level === "Medium"
+                      ? "btn-warning"
                       : "btn-secondary"
                     : "btn-outline-secondary"
                 }`}
@@ -72,13 +150,12 @@ const JoinQueue = () => {
               </button>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={() => setJoined(true)}>
+
+          <button className="btn btn-primary" onClick={joinQueue}>
             Join {service} Queue
           </button>
         </div>
-
       ) : (
-        /* After joining */
         <div>
           <div className="row mb-3">
             <div className="col-md-6 mb-3">
@@ -87,18 +164,24 @@ const JoinQueue = () => {
                 <p className="fs-4 mb-0">{position}</p>
               </div>
             </div>
+
             <div className="col-md-6 mb-3">
               <div className="card p-3 h-100">
                 <h5>Your Priority</h5>
-                <span className={`badge fs-6 ${
-                  priority === "High" ? "bg-danger" :
-                  priority === "Medium" ? "bg-warning text-dark" :
-                  "bg-secondary"
-                }`}>
+                <span
+                  className={`badge fs-6 ${
+                    priority === "High"
+                      ? "bg-danger"
+                      : priority === "Medium"
+                      ? "bg-warning text-dark"
+                      : "bg-secondary"
+                  }`}
+                >
                   {priority}
                 </span>
               </div>
             </div>
+
             <div className="col-12">
               <div className="card p-3">
                 <h5>Status</h5>
@@ -109,18 +192,29 @@ const JoinQueue = () => {
 
           <button
             className="btn btn-outline-danger mt-2"
-            onClick={() => {
-              setJoined(false);
-              setPosition(4);
-              setEstimatedWait(20);
-              setPeopleInQueue(3);
-              setStatus("Waiting");
-            }}
+            onClick={leaveQueue}
           >
             Leave Queue
           </button>
         </div>
       )}
+
+      <div className="card p-3 mt-4">
+        <h5>Current Queue Data</h5>
+        {queueData.map((item) => (
+          <div key={item.id} className="border-bottom py-2">
+            <p className="mb-1">
+              <strong>Service:</strong> {item.service}
+            </p>
+            <p className="mb-1">
+              <strong>Status:</strong> {item.status}
+            </p>
+            <p className="mb-0">
+              <strong>Priority:</strong> {item.priority || "N/A"}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
