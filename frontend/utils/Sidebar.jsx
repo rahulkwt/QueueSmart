@@ -45,7 +45,7 @@ const Sidebar = ({ role }) => {
                 </li>
 
                 <li className="nxl-item">
-                  <Link to="/portal/join" className="nxl-link">
+                  <Link to="/portal/user/queue" className="nxl-link">
                     <span className="nxl-micon">
                         <i className="feather-users"></i>
                     </span>
@@ -57,7 +57,7 @@ const Sidebar = ({ role }) => {
 
 
                 <li className="nxl-item">
-                  <Link to="/portal/history" className="nxl-link">
+                  <Link to="/portal/user/history" className="nxl-link">
                     <span className="nxl-micon">
                         <i className="feather-cast"></i>
                     </span>
@@ -82,7 +82,7 @@ const Sidebar = ({ role }) => {
                 </li>
 
                 <li className="nxl-item">
-                  <Link to="/portal/queue-management" className="nxl-link">
+                  <Link to="/portal/admin/queue-management" className="nxl-link">
                     <span className="nxl-micon">
                           <i className="feather-users"></i>
                       </span>
@@ -91,7 +91,7 @@ const Sidebar = ({ role }) => {
                 </li>
 
                 <li className="nxl-item">
-                  <Link to="/portal/service-management" className="nxl-link">
+                  <Link to="/portal/admin/service-management" className="nxl-link">
                     <span className="nxl-micon">
                       <i className="feather-layout"></i>
                     </span>

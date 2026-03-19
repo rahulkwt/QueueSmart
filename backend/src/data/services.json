@@ -1,0 +1,14 @@
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "General Consultation",
+    "description": "Standard check-up. HAHA NOT!",
+    "duration": 20
+  },
+  {
+    "id": "4b659a18-5a76-42f0-9b76-1b2ee4aff398",
+    "name": "n",
+    "description": "d",
+    "duration": "1"
+  }
+]

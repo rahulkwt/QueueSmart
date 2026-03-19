@@ -4,6 +4,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 import Homepage from "./routes/Homepage";
 import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
         path: "user", element: <UserDashboard />,
         children: [
           { index: true, element: <UserHome /> },
+          { path: "queue", element: <QueueScreen /> },
           { path: "history", element: <UserHistory /> }
         ]
       }, 
@@ -67,12 +69,11 @@ const router = createBrowserRouter([
         path: "admin", element: <AdminDashboard />,
         children: [
           { index: true, element: <AdminHome /> },
-          { path: "manage", element: <ServiceManage /> }
+          { path: "service-management", element: <QueueManagement /> },
+          { path: "queue-management", element: <ServiceManage /> }
         ] 
       },
 
-      { path: "queue", element: <QueueScreen /> },
-      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
@@ -82,7 +83,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    {/* AuthProvider wraps the entire app so every route can access auth state via useAuth() */}
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>
 );
 

@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const ServiceManagement = () => {
   // I AM COMMENTING OUT PRIORITY TO PRESERVE
   // DROPDOWN FEATURE FOR LATER
   // commenting out priority everywhere, including html
   // sets up how services will be formatted and detailed
+  const { user } = useAuth(); // user.token is needed to authorize create/update requests
   const [services, setServices] = useState([]);
-  // NEW
+
+  const fetchServices = () => {
+    fetch("http://localhost:3000/api/admin/services")
+      .then(res => res.json())
+      .then(data => setServices(data));
+  };
+
   useEffect(() => {
-    const fetchUsers = () => {
-      fetch("http://localhost:3000/api/services")
-        .then(res => res.json())
-        .then(data => setServices(data));
-    };
+    fetchServices(); // initial call
 
-    fetchUsers(); // initial call
-
-    const interval = setInterval(fetchUsers, 5000); // every 5 seconds
+    const interval = setInterval(fetchServices, 5000); // every 5 seconds
 
     return () => clearInterval(interval); // cleanup on unmount
   }, []);
@@ -35,15 +37,27 @@ const ServiceManagement = () => {
   // admin is adding a service or editing one
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isEditing !== null) {
-      // Edit logic
-      setServices(services.map(s => s.id === isEditing ? { ...formData, id: isEditing } : s));
-      setIsEditing(null);
-    } else {
-      // Create logic
-      setServices([...services, { ...formData, id: Date.now() }]);
-    }
-    setFormData({ name: "", description: "", duration: ""/*, priority: "Low"*/ });
+
+    const url = isEditing !== null
+      ? `http://localhost:3000/api/admin/services/${isEditing}`
+      : "http://localhost:3000/api/admin/services";
+
+    const method = isEditing !== null ? "PUT" : "POST";
+
+    fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user.token}`,
+      },
+      body: JSON.stringify(formData),
+    })
+      .then(res => res.json())
+      .then(() => {
+        fetchServices(); // refresh list from server
+        setIsEditing(null);
+        setFormData({ name: "", description: "", duration: ""/*, priority: "Low"*/ });
+      });
   };
 
   // boolean to tell whether the admin is editing or adding

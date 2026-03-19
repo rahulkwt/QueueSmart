@@ -1,6 +1,51 @@
-import React from "react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const RegistrationPage = () => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  /**
+   * Validates form input and posts new account data to the register API.
+   * Client-side password match is checked first to avoid a needless network request.
+   * On success, redirects to /login so the user can sign in immediately.
+   * @param {React.FormEvent} e
+   */
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    // Client-side guard — server also validates, but this gives instant feedback
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Registration failed.");
+        return;
+      }
+
+      navigate("/login");
+    } catch {
+      setError("Could not connect to server.");
+    }
+  }
+
   return (
     <main className="auth-cover-wrapper">
       <div className="auth-cover-content-inner">
@@ -27,20 +72,23 @@ const RegistrationPage = () => {
             </div>
 
             <h2 className="fs-20 fw-bolder mb-4">Register</h2>
-            <h4 className="fs-13 fw-bold mb-2">
-              Manage all your Duralux crm
-            </h4>
+            <h4 className="fs-13 fw-bold mb-2">Create your QueueSmart account</h4>
             <p className="fs-12 fw-medium text-muted">
-              Let's get you all setup, so you can verify your personal account
-              and begine setting up your profile.
+              Let's get you set up so you can start managing your queues.
             </p>
 
-            <form action="index.html" className="w-100 mt-4 pt-2">
+            <form onSubmit={handleSubmit} className="w-100 mt-4 pt-2">
+              {error && (
+                <div className="alert alert-danger py-2 fs-12">{error}</div>
+              )}
+
               <div className="mb-4">
                 <input
                   type="text"
                   className="form-control"
                   placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
@@ -50,101 +98,47 @@ const RegistrationPage = () => {
                   type="email"
                   className="form-control"
                   placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
 
               <div className="mb-4">
                 <input
-                  type="tel"
+                  type="text"
                   className="form-control"
                   placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
-              </div>
-
-              <div className="mb-4 generate-pass">
-                <div className="input-group field">
-                  <input
-                    type="password"
-                    className="form-control password"
-                    id="newPassword"
-                    placeholder="Password Confirm"
-                  />
-                  <div
-                    className="input-group-text c-pointer gen-pass"
-                    data-bs-toggle="tooltip"
-                    title="Generate Password"
-                  >
-                    <i className="feather-hash"></i>
-                  </div>
-                  <div
-                    className="input-group-text border-start bg-gray-2 c-pointer show-pass"
-                    data-bs-toggle="tooltip"
-                    title="Show/Hide Password"
-                  >
-                    <i></i>
-                  </div>
-                </div>
-
-                <div className="progress-bar mt-2">
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </div>
               </div>
 
               <div className="mb-4">
                 <input
                   type="password"
                   className="form-control"
-                  placeholder="Password again"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="mt-4">
-                <div className="custom-control custom-checkbox mb-2">
-                  <input
-                    type="checkbox"
-                    className="custom-control-input"
-                    id="receiveMial"
-                    required
-                  />
-                  <label
-                    className="custom-control-label c-pointer text-muted"
-                    htmlFor="receiveMial"
-                    style={{ fontWeight: 400 }}
-                  >
-                    Yes, I wnat to receive Duralux community emails
-                  </label>
-                </div>
-
-                <div className="custom-control custom-checkbox">
-                  <input
-                    type="checkbox"
-                    className="custom-control-input"
-                    id="termsCondition"
-                    required
-                  />
-                  <label
-                    className="custom-control-label c-pointer text-muted"
-                    htmlFor="termsCondition"
-                    style={{ fontWeight: 400 }}
-                  >
-                    I agree to all the{" "}
-                    <a href="#">Terms &amp; Conditions</a> and{" "}
-                    <a href="#">Fees</a>.
-                  </label>
-                </div>
+              <div className="mb-4">
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="mt-5">
-                <button
-                  type="submit"
-                  className="btn btn-lg btn-primary w-100"
-                >
+                <button type="submit" className="btn btn-lg btn-primary w-100">
                   Create Account
                 </button>
               </div>
@@ -152,9 +146,9 @@ const RegistrationPage = () => {
 
             <div className="mt-5 text-muted">
               <span>Already have an account?</span>{" "}
-              <a href="auth-login-cover.html" className="fw-bold">
+              <Link to="/login" className="fw-bold">
                 Login
-              </a>
+              </Link>
             </div>
           </div>
         </div>

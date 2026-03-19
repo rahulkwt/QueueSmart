@@ -1,25 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from "../context/AuthContext";
 
 // removed mock data from here
 
 // this is a React component to go in the User dash board
 const UserHistory = () => {
+    const { user } = useAuth(); // user.token is needed to authorize the history request
     const [users, setUsers] = useState([]); // NEW
     const [selected, setSelected] = useState([]);
 
     // NEW
     useEffect(() => {
-      const fetchUsers = () => {
-        fetch("http://localhost:3000/api/history")
-          .then(res => res.json())
-          .then(data => setUsers(data));
-      };
-
-      fetchUsers(); // initial call
-
-      const interval = setInterval(fetchUsers, 5000); // every 5 seconds
-
-      return () => clearInterval(interval); // cleanup on unmount
+      // Pass the session token so the backend can verify the request is authenticated
+      fetch("http://localhost:3000/api/user/history", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+        .then(res => res.json())
+        .then(data => setUsers(data));
     }, []);
 
     // toggle all

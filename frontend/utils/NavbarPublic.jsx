@@ -66,7 +66,7 @@ const Navbar = () => {
                 {/* Login button */}
                 <div className="header-right-btn f-right d-none d-lg-block ml-30">
                 <Link to="/login" className="btn header-btn">
-                    Login / Signup
+                    Login
                 </Link>
                 </div>
 
