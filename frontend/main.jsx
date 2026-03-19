@@ -4,6 +4,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 import Homepage from "./routes/Homepage";
 import LoginPage from "./routes/LoginPage";
 import RegistrationPage from "./routes/RegistrationPage";
@@ -82,7 +83,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    {/* AuthProvider wraps the entire app so every route can access auth state via useAuth() */}
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>
 );
 
