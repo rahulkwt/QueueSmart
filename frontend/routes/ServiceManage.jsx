@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const ServiceManagement = () => {
@@ -6,9 +6,21 @@ const ServiceManagement = () => {
   // DROPDOWN FEATURE FOR LATER
   // commenting out priority everywhere, including html
   // sets up how services will be formatted and detailed
-  const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", description: "Standard check-up", duration: 20/*, priority: "Medium"*/ },
-  ]);
+  const [services, setServices] = useState([]);
+  // NEW
+  useEffect(() => {
+    const fetchUsers = () => {
+      fetch("http://localhost:3000/api/services")
+        .then(res => res.json())
+        .then(data => setServices(data));
+    };
+
+    fetchUsers(); // initial call
+
+    const interval = setInterval(fetchUsers, 5000); // every 5 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, []);
 
   // form data for the dynamic table below in HTML
   const [formData, setFormData] = useState({
