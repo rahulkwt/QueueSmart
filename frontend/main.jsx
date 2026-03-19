@@ -61,6 +61,7 @@ const router = createBrowserRouter([
         path: "user", element: <UserDashboard />,
         children: [
           { index: true, element: <UserHome /> },
+          { path: "queue", element: <QueueScreen /> },
           { path: "history", element: <UserHistory /> }
         ]
       }, 
@@ -68,12 +69,11 @@ const router = createBrowserRouter([
         path: "admin", element: <AdminDashboard />,
         children: [
           { index: true, element: <AdminHome /> },
-          { path: "manage", element: <ServiceManage /> }
+          { path: "service-management", element: <QueueManagement /> },
+          { path: "queue-management", element: <ServiceManage /> }
         ] 
       },
 
-      { path: "queue", element: <QueueScreen /> },
-      { path: "queue-management", element: <QueueManagement /> },
     ],
   },
 ]);
