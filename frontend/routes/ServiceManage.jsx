@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const SERVICES_PATH = "http://localhost:3000/api/admin/services";
 const ServiceManagement = () => {
   // I AM COMMENTING OUT PRIORITY TO PRESERVE
   // DROPDOWN FEATURE FOR LATER
@@ -11,7 +12,7 @@ const ServiceManagement = () => {
   const [services, setServices] = useState([]);
 
   const fetchServices = () => {
-    fetch("http://localhost:3000/api/admin/services")
+    fetch(SERVICES_PATH)
       .then(res => res.json())
       .then(data => setServices(data));
   };
@@ -39,8 +40,8 @@ const ServiceManagement = () => {
     e.preventDefault();
 
     const url = isEditing !== null
-      ? `http://localhost:3000/api/admin/services/${isEditing}`
-      : "http://localhost:3000/api/admin/services";
+      ? `${SERVICES_PATH}/${isEditing}`
+      : SERVICES_PATH;
 
     const method = isEditing !== null ? "PUT" : "POST";
 
