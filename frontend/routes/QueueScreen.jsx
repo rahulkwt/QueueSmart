@@ -13,11 +13,12 @@ const JoinQueue = () => {
   const [status, setStatus] = useState("Waiting");
   const [queueData, setQueueData] = useState([]);
   const [queueId, setQueueId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
 
-  // GET current active queue data from backend
   const fetchQueue = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/services");
+      const response = await axios.get("http://localhost:3000/api/services");
       setQueueData(response.data);
       setPeopleInQueue(response.data.length);
     } catch (error) {
@@ -25,67 +26,61 @@ const JoinQueue = () => {
     }
   };
 
-  // POST a new queue entry to backend
   const joinQueue = async () => {
     try {
-      const response = await axios.post("http://localhost:5001/api/services", {
-        service: service,
-        priority: priority,
+      setLoading(true);
+
+      const response = await axios.post("http://localhost:3000/api/services", {
+        service,
+        priority,
         date: new Date().toISOString(),
-        status: "Waiting"
+        status: "Waiting",
       });
 
       console.log("Joined queue:", response.data);
 
-      // save the id of the queue record that was just created
       setQueueId(response.data.id);
-
-      // switch screen to joined view
       setJoined(true);
 
-      // refresh queue list from backend
-      fetchQueue();
+      await fetchQueue();
     } catch (error) {
       console.error("Error joining queue:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // PATCH the queue entry instead of deleting it
-  // this is soft delete: mark it as left/aborted in backend
   const leaveQueue = async () => {
     try {
+      setLoading(true);
+
       if (!queueId) {
         console.error("No queue id found.");
-        return;
+      } else {
+        await axios.patch(`http://localhost:3000/api/services/${queueId}/leave`, {
+          leftReason: "User left queue",
+          leftBy: "user",
+        });
+
+        console.log("Left queue for id:", queueId);
       }
-
-      await axios.patch(`http://localhost:5001/api/services/${queueId}/leave`, {
-        leftReason: "User left queue",
-        leftBy: "user"
-      });
-
-      console.log("Left queue for id:", queueId);
-
-      // reset frontend state
+    } catch (error) {
+      console.error("Error leaving queue:", error);
+    } finally {
       setJoined(false);
       setQueueId(null);
       setPosition(4);
       setEstimatedWait(20);
       setStatus("Waiting");
-
-      // refresh queue so removed/aborted user no longer shows in active queue
-      fetchQueue();
-    } catch (error) {
-      console.error("Error leaving queue:", error);
+      await fetchQueue();
+      setLoading(false);
     }
   };
 
-  // load queue when component first opens
   useEffect(() => {
     fetchQueue();
   }, []);
 
-  // fake queue movement after user joins
   useEffect(() => {
     if (!joined) return;
 
@@ -93,12 +88,11 @@ const JoinQueue = () => {
       setPosition((prev) => (prev > 1 ? prev - 1 : 1));
       setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
       setPeopleInQueue((prev) => (prev > 1 ? prev - 1 : 1));
-    }, 5000);
+    }, 3001);
 
     return () => clearInterval(interval);
   }, [joined]);
 
-  // update displayed status based on fake position
   useEffect(() => {
     if (position > 2) setStatus("Waiting");
     else if (position === 2) setStatus("Almost Ready");
@@ -151,8 +145,12 @@ const JoinQueue = () => {
             ))}
           </div>
 
-          <button className="btn btn-primary" onClick={joinQueue}>
-            Join {service} Queue
+          <button
+            className="btn btn-primary"
+            onClick={joinQueue}
+            disabled={loading}
+          >
+            {loading ? "Joining..." : `Join ${service} Queue`}
           </button>
         </div>
       ) : (
@@ -193,8 +191,9 @@ const JoinQueue = () => {
           <button
             className="btn btn-outline-danger mt-2"
             onClick={leaveQueue}
+            disabled={loading}
           >
-            Leave Queue
+            {loading ? "Leaving..." : "Leave Queue"}
           </button>
         </div>
       )}
