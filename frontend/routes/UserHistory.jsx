@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from "../context/AuthContext";
 
 // removed mock data from here
 
 // this is a React component to go in the User dash board
 const UserHistory = () => {
+    const { user } = useAuth(); // user.token is needed to authorize the history request
     const [users, setUsers] = useState([]); // NEW
     const [selected, setSelected] = useState([]);
 
     // NEW
     useEffect(() => {
-      fetch("http://localhost:3000/api/history")
+      // Pass the session token so the backend can verify the request is authenticated
+      fetch("http://localhost:3000/api/history", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
         .then(res => res.json())
         .then(data => setUsers(data));
     }, []);
