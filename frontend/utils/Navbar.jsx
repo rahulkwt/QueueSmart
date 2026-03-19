@@ -1,17 +1,17 @@
-// import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
-  // const [open, setOpen] = useState(false);
+  // user holds the session object { id, name, email, role, token } from AuthContext/localStorage
+  const { user, logout } = useAuth();
 
   return (
     <header className="nxl-header">
       <div className="header-wrapper">
         {/* Start Header Left */}
         <div className="user-name my-auto">
-          <h3>Welcome,<span className="user-name"> User</span>!</h3>
+          <h3>Welcome,<span className="user-name"> {user?.name || "User"}</span>!</h3>
         </div>
         <div className="header-left d-flex align-items-center gap-4">
-          {/* Start nxl-head-mobile-toggler */}
           <a
             href="#"
             onClick={(e) => e.preventDefault()}
@@ -108,9 +108,9 @@ const Navbar = () => {
                       className="img-fluid user-avtar"
                     />
                     <div>
-                      <h6 className="text-dark mb-0">Alexandra Della</h6>
+                      <h6 className="text-dark mb-0">{user?.name}</h6>
                       <span className="fs-12 fw-medium text-muted">
-                        alex@example.com
+                        {user?.email}
                       </span>
                     </div>
                   </div>
@@ -123,9 +123,10 @@ const Navbar = () => {
                   <span>Profile Details</span>
                 </a>
 
+                {/* Calls logout() which clears localStorage, resets auth state, and redirects to /login */}
                 <a
                   href="#"
-                  onClick={(e) => e.preventDefault()}
+                  onClick={(e) => { e.preventDefault(); logout(); }}
                   className="dropdown-item"
                 >
                   <i className="feather-log-out"></i>

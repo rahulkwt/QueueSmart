@@ -1,18 +1,12 @@
 // THIRD
 
 import express from "express";
-import { 
-    getHistory,
-    getHistoryByUser,
-    addHistory,
-    deleteHistory
-} from "../controllers/historyController.js";
+import { getHistory } from "../controllers/historyController.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-router.get("/history", getHistory);
-router.get("/history/:userId",  getHistoryByUser);
-router.post("/history",         addHistory);
-router.delete("/history/:id",   deleteHistory);
+// GET /api/history — protected: caller must supply a valid Bearer token
+router.get("/history", verifyToken, getHistory);
 
 export default router;
