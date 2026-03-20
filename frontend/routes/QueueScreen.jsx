@@ -31,6 +31,18 @@ const JoinQueue = () => {
     }
   };
 
+  const saveActiveQueue = (id, pri) => {
+    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
+    stored[decodedService] = { queueId: id, priority: pri, joinedAt: new Date().toISOString() };
+    localStorage.setItem("activeQueues", JSON.stringify(stored));
+  };
+
+  const removeActiveQueue = () => {
+    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
+    delete stored[decodedService];
+    localStorage.setItem("activeQueues", JSON.stringify(stored));
+  };
+
   const joinQueue = async () => {
     try {
       setLoading(true);
@@ -44,6 +56,7 @@ const JoinQueue = () => {
 
       setQueueId(response.data.id);
       setJoined(true);
+      saveActiveQueue(response.data.id, priority);
 
       const count = await fetchQueue();
       setPosition(count);
@@ -75,13 +88,26 @@ const JoinQueue = () => {
       setPosition(null);
       setEstimatedWait(null);
       setStatus("Waiting");
+      removeActiveQueue();
       await fetchQueue();
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchQueue();
+    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
+    const existing = stored[decodedService];
+    if (existing) {
+      setJoined(true);
+      setQueueId(existing.queueId);
+      setPriority(existing.priority);
+      fetchQueue().then((count) => {
+        setPosition(count);
+        setEstimatedWait(count * 5);
+      });
+    } else {
+      fetchQueue();
+    }
   }, [decodedService]);
 
   useEffect(() => {
@@ -123,6 +149,7 @@ const JoinQueue = () => {
       setPosition(null);
       setEstimatedWait(null);
       setStatus("Waiting");
+      removeActiveQueue();
       await fetchQueue();
     }, 2000);
     return () => clearTimeout(timeout);

@@ -45,7 +45,7 @@ const Sidebar = ({ role }) => {
                 </li>
 
                 <li className="nxl-item">
-                  <Link to="/portal/user/queue" className="nxl-link">
+                  <Link to="/portal/user/queue-status" className="nxl-link">
                     <span className="nxl-micon">
                         <i className="feather-users"></i>
                     </span>

@@ -16,6 +16,7 @@ import ServiceManage from "./routes/ServiceManage";
 import ErrorPage from "./routes/ErrorPage";
 import QueueScreen from "./routes/QueueScreen";
 import QueueManagement from "./routes/QueueManagement";
+import QueueStatus from "./routes/QueueStatus";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import UserHome from "./routes/UserHome";
@@ -62,7 +63,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <UserHome /> },
           { path: "queue/:service", element: <QueueScreen /> },
-          { path: "history", element: <UserHistory /> }
+          { path: "history", element: <UserHistory /> },
+          { path: "queue-status", element: <QueueStatus /> }
         ]
       }, 
       { 
