@@ -4,5 +4,11 @@
     "name": "General Consultation",
     "description": "Standard check-up.",
     "duration": 20
+  },
+  {
+    "id": "00bd5bc2-3791-4a8a-865e-ef4175ab13f8",
+    "name": "Emergency",
+    "description": "A patient needs immediate medical care.",
+    "duration": "10"
   }
 ]
