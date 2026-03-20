@@ -2,68 +2,70 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
 const QUEUES_PATH = "http://localhost:3000/api/admin/queue";
+
 const QueueManagement = () => {
   const { user } = useAuth(); // user.token is needed to authorize queue mutations
   const [queue, setQueue] = useState([]);
   const [services, setServices] = useState([]);
-  const [selectedService, setSelectedService] = useState("");
+  const [selectedService, setSelectedService] = useState(""); // stores service id
 
-  // Fetch the live queue from the server
-  const fetchQueue = () => {
-    fetch(QUEUES_PATH)
+  // Fetch the live queue for the given service id
+  const fetchQueue = (serviceId) => {
+    if (!serviceId) return;
+    fetch(`${QUEUES_PATH}/${serviceId}`)
       .then((res) => res.json())
       .then((data) => setQueue(data));
   };
 
-  // Fetch configured services for the selector dropdown
-  const fetchServices = () => {
+  // Fetch configured services once on mount; default-select the first one
+  useEffect(() => {
     fetch("http://localhost:3000/api/admin/services")
       .then((res) => res.json())
       .then((data) => {
         setServices(data);
-        if (data.length > 0 && selectedService === "") {
-          setSelectedService(data[0].name);
+        if (data.length > 0) {
+          setSelectedService(data[0].id);
         }
       });
-  };
-
-  useEffect(() => {
-    fetchQueue();
-    fetchServices();
-
-    const interval = setInterval(fetchQueue, 5000); // poll queue every 5 seconds
-    return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
-  // Serve the first user in the queue
+  // Re-fetch and re-start polling whenever the selected service changes
+  useEffect(() => {
+    fetchQueue(selectedService);
+
+    const interval = setInterval(() => fetchQueue(selectedService), 5000);
+    return () => clearInterval(interval); // cleanup before next effect or unmount
+  }, [selectedService]);
+
+  // Serve the first user in the selected service's queue
   const serveNext = () => {
     if (queue.length === 0) return;
-    fetch(`${QUEUES_PATH}/serve`, {
+    fetch(`${QUEUES_PATH}/${selectedService}/serve`, {
       method: "POST",
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then((res) => res.json())
-      .then(() => fetchQueue());
+      .then(() => fetchQueue(selectedService));
   };
 
-  // Remove a specific user from the queue
-  const removeUser = (id) => {
-    fetch(`${QUEUES_PATH}/${id}`, {
+  // Remove a specific entry from the selected service's queue
+  const removeUser = (entryId) => {
+    fetch(`${QUEUES_PATH}/${selectedService}/${entryId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then((res) => res.json())
-      .then(() => fetchQueue());
+      .then(() => fetchQueue(selectedService));
   };
 
-  // Move a user one position toward the front
-  const moveUp = (id) => {
-    fetch(`${QUEUES_PATH}/${id}/move-up`, {
+  // Move an entry one position toward the front within the selected service's queue
+  const moveUp = (entryId) => {
+    fetch(`${QUEUES_PATH}/${selectedService}/${entryId}/move-up`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then((res) => res.json())
-      .then(() => fetchQueue());
+      .then(() => fetchQueue(selectedService));
   };
 
   return (
@@ -79,7 +81,7 @@ const QueueManagement = () => {
           onChange={(e) => setSelectedService(e.target.value)}
         >
           {services.map((s) => (
-            <option key={s.id} value={s.name}>
+            <option key={s.id} value={s.id}>
               {s.name}
             </option>
           ))}

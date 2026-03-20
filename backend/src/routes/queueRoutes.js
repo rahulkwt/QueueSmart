@@ -4,16 +4,16 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// GET /api/admin/queue — view the current queue
-router.get("/queue", getQueue);
+// GET /api/admin/queue/:serviceId — view the queue for a specific service
+router.get("/queue/:serviceId", getQueue);
 
-// POST /api/admin/queue/serve — protected: remove and return the first entry
-router.post("/queue/serve", verifyToken, serveNext);
+// POST /api/admin/queue/:serviceId/serve — protected: serve the next user in a service's queue
+router.post("/queue/:serviceId/serve", verifyToken, serveNext);
 
-// DELETE /api/admin/queue/:id — protected: remove a specific entry
-router.delete("/queue/:id", verifyToken, removeFromQueue);
+// DELETE /api/admin/queue/:serviceId/:entryId — protected: remove a specific entry
+router.delete("/queue/:serviceId/:entryId", verifyToken, removeFromQueue);
 
-// PUT /api/admin/queue/:id/move-up — protected: move an entry one position toward the front
-router.put("/queue/:id/move-up", verifyToken, moveUp);
+// PUT /api/admin/queue/:serviceId/:entryId/move-up — protected: move an entry one position toward the front
+router.put("/queue/:serviceId/:entryId/move-up", verifyToken, moveUp);
 
 export default router;
