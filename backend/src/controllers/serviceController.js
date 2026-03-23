@@ -1,11 +1,13 @@
 import { serviceData } from "../mock/serviceData.js";
 
 export const getService = (req, res) => {
-    const { service } = req.query;
+    const { service, userId } = req.query;
     const activeServices = serviceData.filter((item) => {
         if (item.isActive === false) return false;
         if (item.status === "Completed") return false;
+        if (service && userId) return item.service === service && item.userId === userId;
         if (service) return item.service === service;
+        if (userId) return item.userId === userId;
         return true;
     });
     res.json(activeServices);
@@ -17,7 +19,7 @@ export const addService = (req, res) => {
     ...req.body,
     isActive: true,
     leftReason: null,
-    leftBy: null
+    leftBy: null,
   };
 
   serviceData.push(newService);

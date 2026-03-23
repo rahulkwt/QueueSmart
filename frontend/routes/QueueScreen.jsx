@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const JoinQueue = () => {
   const { service } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const decodedService = decodeURIComponent(service);
 
   const [joined, setJoined] = useState(false);
@@ -31,18 +33,6 @@ const JoinQueue = () => {
     }
   };
 
-  const saveActiveQueue = (id, pri) => {
-    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
-    stored[decodedService] = { queueId: id, priority: pri, joinedAt: new Date().toISOString() };
-    localStorage.setItem("activeQueues", JSON.stringify(stored));
-  };
-
-  const removeActiveQueue = () => {
-    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
-    delete stored[decodedService];
-    localStorage.setItem("activeQueues", JSON.stringify(stored));
-  };
-
   const joinQueue = async () => {
     try {
       setLoading(true);
@@ -52,11 +42,12 @@ const JoinQueue = () => {
         priority,
         date: new Date().toISOString(),
         status: "Waiting",
+        userId: user.id,
       });
 
       setQueueId(response.data.id);
       setJoined(true);
-      saveActiveQueue(response.data.id, priority);
+      window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
 
       const count = await fetchQueue();
       setPosition(count);
@@ -88,26 +79,28 @@ const JoinQueue = () => {
       setPosition(null);
       setEstimatedWait(null);
       setStatus("Waiting");
-      removeActiveQueue();
       await fetchQueue();
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
-    const existing = stored[decodedService];
-    if (existing) {
-      setJoined(true);
-      setQueueId(existing.queueId);
-      setPriority(existing.priority);
-      fetchQueue().then((count) => {
-        setPosition(count);
-        setEstimatedWait(count * 5);
-      });
-    } else {
-      fetchQueue();
-    }
+    axios.get(`http://localhost:3000/api/services?service=${encodeURIComponent(decodedService)}&userId=${user.id}`)
+      .then((res) => {
+        const existing = res.data[0];
+        if (existing) {
+          setJoined(true);
+          setQueueId(existing.id);
+          setPriority(existing.priority);
+          fetchQueue().then((count) => {
+            setPosition(count);
+            setEstimatedWait(count * 5);
+          });
+        } else {
+          fetchQueue();
+        }
+      })
+      .catch(() => fetchQueue());
   }, [decodedService]);
 
   useEffect(() => {
@@ -137,8 +130,13 @@ const JoinQueue = () => {
   useEffect(() => {
     if (position === null) return;
     if (position > 1) setStatus("Waiting");
-    else if (position === 1) setStatus("Almost Ready");
-    else setStatus("Served");
+    else if (position === 1) {
+      setStatus("Almost Ready");
+      window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
+    } else {
+      setStatus("Served");
+      window.dispatchEvent(new CustomEvent("queue-served", { detail: { service: decodedService } }));
+    }
   }, [position]);
 
   useEffect(() => {
@@ -149,7 +147,6 @@ const JoinQueue = () => {
       setPosition(null);
       setEstimatedWait(null);
       setStatus("Waiting");
-      removeActiveQueue();
       await fetchQueue();
     }, 2000);
     return () => clearTimeout(timeout);

@@ -6,7 +6,7 @@
     "username": "rahulsunil",
     "password": "qazwsx",
     "role": "user",
-    "token": "5a46127a-cadc-4233-bbd2-2e6ee3cd4b0b"
+    "token": "f911129b-4a95-4d07-8666-3fb1739664bc"
   },
   {
     "id": "83958ea6-2428-42f0-b9ec-fd7a100fac8a",
@@ -15,7 +15,16 @@
     "username": "erickks",
     "password": "qazwsx",
     "role": "user",
-    "token": "c5a9cf9e-14e4-430c-a101-7c05e50da828"
+    "token": "c3ee9099-2d9b-4971-9c33-6baa257c4cab"
+  },
+  {
+    "id": "d7e2f3a4-8b9c-4d5e-af12-3456789abcde",
+    "name": "Mia",
+    "email": "asdfghjklll@gmail.com",
+    "username": "mia",
+    "password": "qazwsx",
+    "role": "user",
+    "token": "c5a81471-fe04-4978-ae8a-d6333f89eae2"
   },
   {
     "id": "a3f1c2d4-5e6b-7890-abcd-ef1234567890",
@@ -24,6 +33,6 @@
     "username": "admin",
     "password": "admin123",
     "role": "admin",
-    "token": "29994178-e186-4a85-8b16-6b00db5f5f63"
+    "token": "91a2d303-af16-4d92-8697-53a23f412aed"
   }
 ]
