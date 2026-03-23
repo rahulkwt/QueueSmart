@@ -31,7 +31,6 @@ const ServiceManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    duration: "",
   });
 
   const [isEditing, setIsEditing] = useState(null);
@@ -59,7 +58,7 @@ const ServiceManagement = () => {
       .then(() => {
         fetchServices(); // refresh list from server
         setIsEditing(null);
-        setFormData({ name: "", description: "", duration: ""/*, priority: "Low"*/ });
+        setFormData({ name: "", description: ""/*, priority: "Low"*/ });
       });
   };
 
@@ -116,19 +115,7 @@ const ServiceManagement = () => {
             ></textarea>
           </div>
 
-          {/* define the input for the service's expected duration */}
           <div className="row align-items-end">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Expected Duration* (minutes)</label>
-              <input
-                type="number"
-                className="form-control"
-                required
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              />
-            </div>
-
             <div className="col-md-6 mb-3 d-flex gap-2">            
               <button
                 type="submit"
@@ -145,7 +132,7 @@ const ServiceManagement = () => {
                   style={{ height: "45px", width: "120px", visibility: isEditing ? "visible" : "hidden", padding: "6px 12px"}} // keeps space
                   onClick={() => {
                     setIsEditing(null);
-                    setFormData({ name: "", description: "", duration: "" });
+                    setFormData({ name: "", description: "" });
                   }}
                 >
                   Cancel
@@ -187,7 +174,6 @@ const ServiceManagement = () => {
             <thead className="bg-transparent border-bottom">
               <tr>
                 <th>Name</th>
-                <th>Duration</th>
                 {/*<th>Priority</th>*/}
                 <th></th>
               </tr>
@@ -199,7 +185,6 @@ const ServiceManagement = () => {
                     <div><strong>{service.name}</strong></div>
                     <small className="fs-12 fw-normal text-muted text-truncate-1-line">{service.description}</small>
                   </td>
-                  <td>{service.duration} mins</td>
                   {/*<td>
                     <span
                       className={`badge ${

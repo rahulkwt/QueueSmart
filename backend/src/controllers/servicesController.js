@@ -38,14 +38,14 @@ export function getServices(req, res) {
  * @param {import('express').Response} res - 201 with the created service on success, 400 if fields missing.
  */
 export function createService(req, res) {
-  const { name, description, duration } = req.body;
+  const { name, description } = req.body;
 
-  if (!name || !description || !duration) {
+  if (!name || !description) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
   const services = readServices();
-  const newService = { id: randomUUID(), name, description, duration };
+  const newService = { id: randomUUID(), name, description };
   services.push(newService);
   writeServices(services);
 
@@ -59,9 +59,9 @@ export function createService(req, res) {
  */
 export function updateService(req, res) {
   const { id } = req.params;
-  const { name, description, duration } = req.body;
+  const { name, description } = req.body;
 
-  if (!name || !description || !duration) {
+  if (!name || !description) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
@@ -72,7 +72,7 @@ export function updateService(req, res) {
     return res.status(404).json({ message: "Service not found." });
   }
 
-  services[index] = { id, name, description, duration };
+  services[index] = { id, name, description };
   writeServices(services);
 
   return res.status(200).json(services[index]);
