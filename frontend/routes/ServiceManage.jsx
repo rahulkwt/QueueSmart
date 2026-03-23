@@ -12,7 +12,9 @@ const ServiceManagement = () => {
   const [services, setServices] = useState([]);
 
   const fetchServices = () => {
-    fetch(SERVICES_PATH)
+    fetch(SERVICES_PATH, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
       .then(res => res.json())
       .then(data => setServices(data));
   };
@@ -66,6 +68,15 @@ const ServiceManagement = () => {
   const handleEdit = (service) => {
     setFormData(service);
     setIsEditing(service.id);
+  };
+
+  const handleDelete = (id) => {
+    fetch(`${SERVICES_PATH}/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then(() => fetchServices());
   };
 
   // in html, commenting out priority
@@ -202,13 +213,20 @@ const ServiceManagement = () => {
                       {service.priority}
                     </span>
                   </td>*/}
-                  <td>
+                  <td className="d-flex gap-2">
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-primary"
                       onClick={() => handleEdit(service)}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDelete(service.id)}
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>

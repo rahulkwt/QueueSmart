@@ -12,14 +12,18 @@ const QueueManagement = () => {
   // Fetch the live queue for the given service id
   const fetchQueue = (serviceId) => {
     if (!serviceId) return;
-    fetch(`${QUEUES_PATH}/${serviceId}`)
+    fetch(`${QUEUES_PATH}/${serviceId}`, { 
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
       .then((res) => res.json())
       .then((data) => setQueue(data));
   };
 
   // Fetch configured services once on mount; default-select the first one
   useEffect(() => {
-    fetch("http://localhost:3000/api/admin/services")
+    fetch("http://localhost:3000/api/admin/services", {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
       .then((res) => res.json())
       .then((data) => {
         setServices(data);

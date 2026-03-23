@@ -77,3 +77,23 @@ export function updateService(req, res) {
 
   return res.status(200).json(services[index]);
 }
+
+/**
+ * Deletes an existing service by ID.
+ * @param {import('express').Request} req - Params: { id }
+ * @param {import('express').Response} res - 200 on success, 404 if not found.
+ */
+export function deleteService(req, res) {
+  const { id } = req.params;
+  const services = readServices();
+  const index = services.findIndex((s) => s.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Service not found." });
+  }
+
+  services.splice(index, 1);
+  writeServices(services);
+
+  return res.status(200).json({ message: "Service deleted." });
+}
