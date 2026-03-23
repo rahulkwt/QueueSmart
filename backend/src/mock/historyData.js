@@ -39,4 +39,5 @@ export let historyData = [
   }
 ];
 
-export let nextId = 5;
+// Wrapped in an object so it can be mutated across module imports
+export const idState = { nextId: 5 };

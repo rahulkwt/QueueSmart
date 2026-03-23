@@ -1,9 +1,8 @@
 // SECOND, get as JSON
 
-import { historyData, nextId } from "../mock/historyData.js";
 import * as store from "../mock/historyData.js";
 
-const REQUIRED_FIELDS = ["userID", "service", "doctor", "date", "status"];
+const REQUIRED_FIELDS = ["userId", "service", "doctor", "date", "status"];
 const MAX_NOTES_LENGTH = 300;
 const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -18,13 +17,13 @@ export const getHistory = (req, res) => {
 // GET /api/history/:userID
 // Returns history records for specific user
 export const getHistoryByUser = (req, res) => {
-  const { userID } = req.params;
+  const { userId } = req.params;
 
-  if (!userID || typeof userID !== "string" || userID.trim() === ""){
+  if (!userId || typeof userId !== "string" || userId.trim() === ""){
     return res.status(400).json({ error: "userId param is required" });
   }
 
-  const records = store.historyData.filter(r => r.userID === userId.trim());
+  const records = store.historyData.filter(r => r.userId === userId.trim());
   res.json(records);
 };
 
@@ -36,8 +35,8 @@ export const addHistory = (req, res) => {
 
   // Required field check
   for (const field of REQUIRED_FIELDS){
-    if (!req.body[field] || String(req.body[field]).trim === ""){
-      return res.status(400).json({ error: '${field} is required' });
+    if (!req.body[field] || String(req.body[field]).trim() === ""){
+      return res.status(400).json({ error: `${field} is required` });
     }
   }
   //Type checks
@@ -58,7 +57,7 @@ export const addHistory = (req, res) => {
   }
 
   const newRecord = {
-    id: store.nextId++,
+    id: store.idState.nextId++,
     userId: userId.trim(),
     service: service.trim(),
     doctor: doctor.trim(),
@@ -84,7 +83,7 @@ export const deleteHistory = (req, res) => {
   const index = store.historyData.findIndex(r => r.id === id);
 
   if (index === -1){
-    return res.status(404).json({ error: 'No history record found with id ${id}' });
+    return res.status(404).json({ error: `No history record found with id ${id}` });
   }
 
   const deleted = store.historyData.splice(index, 1)[0];

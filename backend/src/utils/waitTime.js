@@ -1,17 +1,14 @@
 /**
- * Estimates wait time based on queue position and avg service duration
- * @param {number} position - The user's position in the queue
+ * Estimates wait time based on queue position and avg service duration.
+ * @param {number} position - The user's 0-based effective position in the queue
  * @param {number} avgServiceDuration - Average minutes per patient
  * @param {boolean} isOpen - Whether the service is currently open
- * 
- * @returns {number|null} - Estimated wait in minutes, or null if unavailable
- * @throws {Error}      -If any input is invalid
+ *
+ * @returns {number|null} - Estimated wait in minutes, or null if service is closed
+ * @throws {Error} - If any input is invalid
  */
-
 export const estimateWaitTime = (position, avgServiceDuration, isOpen) => {
-    
-    //---Input validation---
-    if (typeof isOpen !== "boolean") {
+  if (typeof isOpen !== "boolean") {
     throw new Error("isOpen must be a boolean");
   }
   if (typeof position !== "number" || !Number.isFinite(position)) {
@@ -27,11 +24,9 @@ export const estimateWaitTime = (position, avgServiceDuration, isOpen) => {
     throw new Error("avgServiceDuration must be greater than 0");
   }
 
-  // --- Edge cases ---
-  if (!isOpen) return null;       // Service is closed — no wait time available
-  if (position === 0) return 0;   // Already being served
+  if (!isOpen) return null;
+  if (position === 0) return 0;
 
-  // --- Core logic ---
-  const waitMinutes = position * avgServiceDuration;
-  return waitMinutes;
+  return position * avgServiceDuration;
 };
+
