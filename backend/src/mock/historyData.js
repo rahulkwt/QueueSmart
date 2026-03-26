@@ -14,9 +14,10 @@ export let historyData = [
     id: 2,
     userId: "P-20489",
     service: "Emergency",
+    service: "Lab Work & Blood Tests",
     doctor: "Dr. Walt Seuss",
     date: "12-02-2025",
-    notes: "Stabilized. Transferred to observation ward.",
+    notes: "Blood panel completed. Results within normal range.",
     status: "Completed"
   },
   {

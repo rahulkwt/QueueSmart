@@ -1,8 +1,22 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
   // user holds the session object { id, name, email, role, token } from AuthContext/localStorage
   const { user, logout } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const { service, priority } = e.detail;
+      setNotifications((prev) => [
+        { id: Date.now(), service, priority, time: new Date().toLocaleTimeString() },
+        ...prev,
+      ]);
+    };
+    window.addEventListener("queue-joined", handler);
+    return () => window.removeEventListener("queue-joined", handler);
+  }, []);
 
   return (
     <header className="nxl-header">
@@ -32,7 +46,7 @@ const Navbar = () => {
           <div className="d-flex align-items-center">
             <div className="dropdown nxl-h-item">
               <a
-                className="nxl-head-link me-3"
+                className="nxl-head-link me-3 position-relative"
                 data-bs-toggle="dropdown"
                 href="#"
                 onClick={(e) => e.preventDefault()}
@@ -40,47 +54,47 @@ const Navbar = () => {
                 data-bs-auto-close="outside"
               >
                 <i className="feather-bell"></i>
+                {notifications.length > 0 && (
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    style={{ fontSize: "0.6rem" }}
+                  >
+                    {notifications.length}
+                  </span>
+                )}
               </a>
 
               <div className="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu">
-                <div className="notifications-item">
-                  <div className="notifications-desc">
-                    <a
-                      href="#"
-                      onClick={(e) => e.preventDefault()}
-                      className="font-body text-truncate-2-line"
-                    >
-                      <span className="fw-semibold text-dark">We should
-                      talk about that at lunch!</span>
-                    </a>
+                {notifications.length === 0 ? (
+                  <div className="notifications-item">
+                    <div className="notifications-desc">
+                      <span className="text-muted">No notifications</span>
+                    </div>
                   </div>
-                </div>
-
-                <div className="notifications-item">
-                  <div className="notifications-desc">
-                    <a
-                      href="#"
-                      onClick={(e) => e.preventDefault()}
-                      className="font-body text-truncate-2-line"
-                    >
-                      <span className="fw-semibold text-dark">We should
-                      talk about that at lunch!</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div className="notifications-item">
-                  <div className="notifications-desc">
-                    <a
-                      href="#"
-                      onClick={(e) => e.preventDefault()}
-                      className="font-body text-truncate-2-line"
-                    >
-                      <span className="fw-semibold text-dark">We should
-                      talk about that at lunch!</span>
-                    </a>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {notifications.map((n) => (
+                      <div key={n.id} className="notifications-item">
+                        <div className="notifications-desc">
+                          <span className="fw-semibold text-dark d-block">
+                            Joined {n.service} Queue
+                          </span>
+                          <span className="text-muted" style={{ fontSize: "0.8rem" }}>
+                            Priority: {n.priority} &middot; {n.time}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="p-2 text-center border-top">
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => setNotifications([])}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
