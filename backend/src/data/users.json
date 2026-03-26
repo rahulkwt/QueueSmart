@@ -6,7 +6,7 @@
     "username": "rahulsunil",
     "password": "qazwsx",
     "role": "user",
-    "token": "91ccdcbe-f084-47af-a331-dc8dba1ed559"
+    "token": "6547ead2-482c-4bb9-b1a4-0ab2f79c2313"
   },
   {
     "id": "83958ea6-2428-42f0-b9ec-fd7a100fac8a",
@@ -15,7 +15,7 @@
     "username": "erickks",
     "password": "qazwsx",
     "role": "user",
-    "token": "9c4b2d41-0738-4ffa-a645-40cbbdfc599a"
+    "token": "98a2767c-f1e5-4691-9dcd-15a91f8b604b"
   },
   {
     "id": "a3f1c2d4-5e6b-7890-abcd-ef1234567890",
@@ -24,6 +24,6 @@
     "username": "admin",
     "password": "admin123",
     "role": "admin",
-    "token": "54e7bf03-cc8f-409b-8f98-d437b4f40285"
+    "token": "29994178-e186-4a85-8b16-6b00db5f5f63"
   }
 ]
