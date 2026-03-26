@@ -1,58 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+
+const QUEUES_PATH = "http://localhost:3000/api/admin/queue";
 
 const QueueManagement = () => {
-  const [selectedService, setSelectedService] = useState("Consultation");
+  const { user } = useAuth(); // user.token is needed to authorize queue mutations
+  const [queue, setQueue] = useState([]);
+  const [services, setServices] = useState([]);
+  const [selectedService, setSelectedService] = useState(""); // stores service id
 
-  const [queue, setQueue] = useState([
-    { id: 1, name: "John Doe" },
-    { id: 2, name: "Sarah Smith" },
-    { id: 3, name: "Michael Lee" },
-  ]);
-
-  // 🔥 History stack for multiple undos
-  const [history, setHistory] = useState([]);
-
-  // Save current state before changing
-  const saveToHistory = () => {
-    setHistory((prev) => [...prev, queue]);
+  // Fetch the live queue for the given service id
+  const fetchQueue = (serviceId) => {
+    if (!serviceId) return;
+    fetch(`${QUEUES_PATH}/${serviceId}`, { 
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setQueue(data));
   };
 
-  // Remove user
-  const removeUser = (id) => {
-    saveToHistory();
-    setQueue(queue.filter((user) => user.id !== id));
-  };
+  // Fetch configured services once on mount; default-select the first one
+  useEffect(() => {
+    fetch("http://localhost:3000/api/admin/services", {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setServices(data);
+        if (data.length > 0) {
+          setSelectedService(data[0].id);
+        }
+      });
+  }, []);
 
-  // Move user up
-  const moveUp = (index) => {
-    if (index === 0) return;
+  // Re-fetch and re-start polling whenever the selected service changes
+  useEffect(() => {
+    fetchQueue(selectedService);
 
-    saveToHistory();
+    const interval = setInterval(() => fetchQueue(selectedService), 5000);
+    return () => clearInterval(interval); // cleanup before next effect or unmount
+  }, [selectedService]);
 
-    const updatedQueue = [...queue];
-    [updatedQueue[index - 1], updatedQueue[index]] = [
-      updatedQueue[index],
-      updatedQueue[index - 1],
-    ];
-
-    setQueue(updatedQueue);
-  };
-
-  // Serve next user
+  // Serve the first user in the selected service's queue
   const serveNext = () => {
     if (queue.length === 0) return;
-
-    saveToHistory();
-    setQueue(queue.slice(1));
+    fetch(`${QUEUES_PATH}/${selectedService}/serve`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then(() => fetchQueue(selectedService));
   };
 
-  // 🔥 Undo (can do multiple times)
-  const undo = () => {
-    if (history.length === 0) return;
+  // Remove a specific entry from the selected service's queue
+  const removeUser = (entryId) => {
+    fetch(`${QUEUES_PATH}/${selectedService}/${entryId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then(() => fetchQueue(selectedService));
+  };
 
-    const previousState = history[history.length - 1];
-    setQueue(previousState);
-    setHistory(history.slice(0, -1));
+  // Move an entry one position toward the front within the selected service's queue
+  const moveUp = (entryId) => {
+    fetch(`${QUEUES_PATH}/${selectedService}/${entryId}/move-up`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then(() => fetchQueue(selectedService));
   };
 
   return (
@@ -67,9 +84,11 @@ const QueueManagement = () => {
           value={selectedService}
           onChange={(e) => setSelectedService(e.target.value)}
         >
-          <option value="Consultation">Consultation</option>
-          <option value="Check-up">Check-up</option>
-          <option value="Follow-up">Follow-up</option>
+          {services.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -81,26 +100,27 @@ const QueueManagement = () => {
           <p>No users in queue.</p>
         ) : (
           <ul className="list-group">
-            {queue.map((user, index) => (
+            {queue.map((entry, index) => (
               <li
-                key={user.id}
+                key={entry.id}
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 <span>
-                  #{index + 1} - {user.name}
+                  #{index + 1} - {entry.name}
                 </span>
 
                 <div>
                   <button
                     className="btn btn-sm btn-outline-secondary me-2"
-                    onClick={() => moveUp(index)}
+                    onClick={() => moveUp(entry.id)}
+                    disabled={index === 0}
                   >
                     ↑
                   </button>
 
                   <button
                     className="btn btn-sm btn-outline-danger"
-                    onClick={() => removeUser(user.id)}
+                    onClick={() => removeUser(entry.id)}
                   >
                     Remove
                   </button>
@@ -116,12 +136,6 @@ const QueueManagement = () => {
         <button className="btn btn-success" onClick={serveNext}>
           Serve Next User
         </button>
-
-        {history.length > 0 && (
-          <button className="btn btn-warning" onClick={undo}>
-            Undo
-          </button>
-        )}
       </div>
     </div>
   );

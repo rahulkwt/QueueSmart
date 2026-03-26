@@ -36,3 +36,19 @@ export function verifyToken(req, res, next) {
   req.user = user;
   next();
 }
+
+/**
+ * Express middleware that checks the authenticated user has the "admin" role.
+ * Must be used after verifyToken (depends on req.user being set).
+ * Returns 403 if the user is not an admin.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export function verifyAdmin(req, res, next) {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Forbidden: admin access required." });
+  }
+  next();
+}
