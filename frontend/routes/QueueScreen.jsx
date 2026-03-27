@@ -47,12 +47,13 @@ const JoinQueue = () => {
     try {
       setLoading(true);
 
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
       const response = await axios.post("http://localhost:3000/api/services", {
         service: decodedService,
         priority,
         date: new Date().toISOString(),
         status: "Waiting",
-      });
+      }, { headers: { Authorization: `Bearer ${user.token}` } });
 
       setQueueId(response.data.id);
       setJoined(true);

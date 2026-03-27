@@ -8,9 +8,10 @@ const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
 
 
 // GET /api/history
-// Returns all history records
+// Returns history records for the logged-in user
 export const getHistory = (req, res) => {
-  res.json(store.historyData);
+  const records = store.historyData.filter(r => r.userId === req.user.id);
+  res.json(records);
 };
 
 
