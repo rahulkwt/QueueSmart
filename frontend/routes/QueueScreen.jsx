@@ -1,59 +1,162 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const JoinQueue = () => {
-  const service = "Consultation"; // 👈 change this per screen
+  const { service } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const decodedService = decodeURIComponent(service);
 
+  const [serviceId, setServiceId] = useState(null);
   const [joined, setJoined] = useState(false);
   const [priority, setPriority] = useState("Low");
-  const [position, setPosition] = useState(4);
-  const [estimatedWait, setEstimatedWait] = useState(20);
-  const [peopleInQueue, setPeopleInQueue] = useState(3);
+  const [position, setPosition] = useState(null);
+  const [estimatedWait, setEstimatedWait] = useState(null);
+  const [peopleInQueue, setPeopleInQueue] = useState(null);
   const [status, setStatus] = useState("Waiting");
+  const [queueId, setQueueId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
+  // Step 1: Look up serviceId by matching service name from admin services list
   useEffect(() => {
-    if (!joined) return;
-    const interval = setInterval(() => {
-      setPosition((prev) => (prev > 1 ? prev - 1 : 1));
-      setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
-      setPeopleInQueue((prev) => (prev > 1 ? prev - 1 : 1));
-    }, 5000);
+    axios
+      .get("http://localhost:3000/api/admin/services", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then((res) => {
+        const svc = res.data.find((s) => s.name === decodedService);
+        if (svc) setServiceId(svc.id);
+      })
+      .catch((err) => console.error("Error fetching services:", err));
+  }, [decodedService]);
+
+  // Fetches the queue for this service and updates position if user is already in it
+  const fetchQueue = async (svcId) => {
+    if (!svcId) return 0;
+    try {
+      const res = await axios.get(`http://localhost:3000/api/admin/queue/${svcId}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const queue = res.data;
+      setPeopleInQueue(queue.length);
+
+      const myEntry = queue.find((e) => e.userId === user.id);
+      if (myEntry) {
+        setJoined(true);
+        setQueueId(myEntry.id);
+        setPriority(myEntry.priority || "Low");
+        const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
+        setPosition(pos);
+        setEstimatedWait(pos * 5);
+      } else if (joined) {
+        // User was served or removed by admin — reset
+        setJoined(false);
+        setQueueId(null);
+        setPosition(null);
+        setEstimatedWait(null);
+        setStatus("Waiting");
+      }
+
+      return queue.length;
+    } catch (err) {
+      console.error("Error fetching queue:", err);
+      return 0;
+    }
+  };
+
+  // Step 2: Once serviceId is known, load initial queue state and start polling
+  useEffect(() => {
+    if (!serviceId) return;
+    fetchQueue(serviceId);
+    const interval = setInterval(() => fetchQueue(serviceId), 10000);
     return () => clearInterval(interval);
-  }, [joined]);
+  }, [serviceId]);
 
+  // Update status label based on position
   useEffect(() => {
-    if (position > 2) setStatus("Waiting");
-    else if (position === 2) setStatus("Almost Ready");
-    else setStatus("Served");
+    if (position === null) return;
+    if (position > 1) {
+      setStatus("Waiting");
+    } else if (position === 1) {
+      setStatus("Almost Ready");
+      window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
+    } else {
+      setStatus("Served");
+      window.dispatchEvent(new CustomEvent("queue-served", { detail: { service: decodedService } }));
+    }
   }, [position]);
+
+  const joinQueue = async () => {
+    if (!serviceId) return;
+    try {
+      setLoading(true);
+      const res = await axios.post(
+        `http://localhost:3000/api/queue/${serviceId}/join`,
+        { priority },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setQueueId(res.data.id);
+      setJoined(true);
+      window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
+      await fetchQueue(serviceId);
+    } catch (err) {
+      console.error("Error joining queue:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const leaveQueue = async () => {
+    if (!queueId || !serviceId) return;
+    try {
+      setLoading(true);
+      await axios.delete(
+        `http://localhost:3000/api/queue/${serviceId}/${queueId}/leave`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+    } catch (err) {
+      console.error("Error leaving queue:", err);
+    } finally {
+      setJoined(false);
+      setQueueId(null);
+      setPosition(null);
+      setEstimatedWait(null);
+      setStatus("Waiting");
+      await fetchQueue(serviceId);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="">
+      <button className="btn btn-outline-secondary mb-3" onClick={() => navigate("/portal/user")}>
+        ← Back to Dashboard
+      </button>
+      <h2 className="mb-4">{decodedService} Queue</h2>
 
-      {/* Title */}
-      <h2 className="mb-4">{service} Queue</h2>
-
-      {/* Queue Info - always visible */}
       <div className="row mb-4">
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>People in Queue</h5>
-            <p className="fs-4 mb-0">{joined ? peopleInQueue + 1 : peopleInQueue}</p>
+            <p className="fs-4 mb-0">{peopleInQueue ?? 0}</p>
           </div>
         </div>
+
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
-            <p className="fs-4 mb-0">{estimatedWait} minutes</p>
+            <p className="fs-4 mb-0">{estimatedWait ?? (peopleInQueue != null ? peopleInQueue * 5 : 0)} minutes</p>
           </div>
         </div>
       </div>
 
-      {/* Before joining */}
       {!joined ? (
         <div className="card p-3 mb-4">
           <h5 className="mb-3">Join this Queue</h5>
           <label className="form-label">Select Priority</label>
+
           <div className="d-flex gap-3 mb-3">
             {["Low", "Medium", "High"].map((level) => (
               <button
@@ -62,8 +165,10 @@ const JoinQueue = () => {
                 onClick={() => setPriority(level)}
                 className={`btn ${
                   priority === level
-                    ? level === "High" ? "btn-danger"
-                      : level === "Medium" ? "btn-warning"
+                    ? level === "High"
+                      ? "btn-danger"
+                      : level === "Medium"
+                      ? "btn-warning"
                       : "btn-secondary"
                     : "btn-outline-secondary"
                 }`}
@@ -72,13 +177,16 @@ const JoinQueue = () => {
               </button>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={() => setJoined(true)}>
-            Join {service} Queue
+
+          <button
+            className="btn btn-primary"
+            onClick={joinQueue}
+            disabled={loading || !serviceId}
+          >
+            {loading ? "Joining..." : `Join ${decodedService} Queue`}
           </button>
         </div>
-
       ) : (
-        /* After joining */
         <div>
           <div className="row mb-3">
             <div className="col-md-6 mb-3">
@@ -87,18 +195,24 @@ const JoinQueue = () => {
                 <p className="fs-4 mb-0">{position}</p>
               </div>
             </div>
+
             <div className="col-md-6 mb-3">
               <div className="card p-3 h-100">
                 <h5>Your Priority</h5>
-                <span className={`badge fs-6 ${
-                  priority === "High" ? "bg-danger" :
-                  priority === "Medium" ? "bg-warning text-dark" :
-                  "bg-secondary"
-                }`}>
+                <span
+                  className={`badge fs-6 ${
+                    priority === "High"
+                      ? "bg-danger"
+                      : priority === "Medium"
+                      ? "bg-warning text-dark"
+                      : "bg-secondary"
+                  }`}
+                >
                   {priority}
                 </span>
               </div>
             </div>
+
             <div className="col-12">
               <div className="card p-3">
                 <h5>Status</h5>
@@ -109,15 +223,10 @@ const JoinQueue = () => {
 
           <button
             className="btn btn-outline-danger mt-2"
-            onClick={() => {
-              setJoined(false);
-              setPosition(4);
-              setEstimatedWait(20);
-              setPeopleInQueue(3);
-              setStatus("Waiting");
-            }}
+            onClick={leaveQueue}
+            disabled={loading}
           >
-            Leave Queue
+            {loading ? "Leaving..." : "Leave Queue"}
           </button>
         </div>
       )}

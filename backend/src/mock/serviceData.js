@@ -1,6 +1,4 @@
-// FIRST
-
-export const historyData = [
+export const serviceData = [
   {
     id: 1,
     service: "General Consultation",
