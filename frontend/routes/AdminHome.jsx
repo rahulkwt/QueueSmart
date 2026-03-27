@@ -110,7 +110,7 @@ const AdminHome = () => {
               <h6 className="mb-0 fw-bold">
                 <i className="feather-grid me-2 text-primary"></i>Services & Queue Lengths
               </h6>
-              <Link to="/portal/service-management" className="btn btn-primary btn-sm">
+              <Link to="/portal/admin/service-management" className="btn btn-primary btn-sm">
                 Manage Services
               </Link>
             </div>
@@ -164,7 +164,7 @@ const AdminHome = () => {
               </div>
             </div>
             <div className="card-footer bg-white d-flex gap-2">
-              <Link to="/portal/queue-management" className="btn btn-outline-primary btn-sm">
+              <Link to="/portal/admin/queue-management" className="btn btn-outline-primary btn-sm">
                 Queue Management
               </Link>
             </div>
