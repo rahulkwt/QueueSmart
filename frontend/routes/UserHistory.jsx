@@ -12,7 +12,7 @@ const UserHistory = () => {
     // NEW
     useEffect(() => {
       // Pass the session token so the backend can verify the request is authenticated
-      fetch("http://localhost:3000/api/history", {
+      fetch("http://localhost:3000/api/user/history", {
         headers: { Authorization: `Bearer ${user.token}` },
       })
         .then(res => res.json())
