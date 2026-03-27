@@ -1,20 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
+const SERVICES_PATH = "http://localhost:3000/api/admin/services";
 const ServiceManagement = () => {
   // I AM COMMENTING OUT PRIORITY TO PRESERVE
   // DROPDOWN FEATURE FOR LATER
   // commenting out priority everywhere, including html
   // sets up how services will be formatted and detailed
-  const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", description: "Standard check-up", duration: 20/*, priority: "Medium"*/ },
-  ]);
+  const { user } = useAuth(); // user.token is needed to authorize create/update requests
+  const [services, setServices] = useState([]);
+
+  const fetchServices = () => {
+    fetch(SERVICES_PATH, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then(res => res.json())
+      .then(data => setServices(data));
+  };
+
+  useEffect(() => {
+    fetchServices(); // initial call
+
+    const interval = setInterval(fetchServices, 5000); // every 5 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, []);
 
   // form data for the dynamic table below in HTML
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    duration: "",
   });
 
   const [isEditing, setIsEditing] = useState(null);
@@ -23,15 +39,27 @@ const ServiceManagement = () => {
   // admin is adding a service or editing one
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isEditing !== null) {
-      // Edit logic
-      setServices(services.map(s => s.id === isEditing ? { ...formData, id: isEditing } : s));
-      setIsEditing(null);
-    } else {
-      // Create logic
-      setServices([...services, { ...formData, id: Date.now() }]);
-    }
-    setFormData({ name: "", description: "", duration: ""/*, priority: "Low"*/ });
+
+    const url = isEditing !== null
+      ? `${SERVICES_PATH}/${isEditing}`
+      : SERVICES_PATH;
+
+    const method = isEditing !== null ? "PUT" : "POST";
+
+    fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user.token}`,
+      },
+      body: JSON.stringify(formData),
+    })
+      .then(res => res.json())
+      .then(() => {
+        fetchServices(); // refresh list from server
+        setIsEditing(null);
+        setFormData({ name: "", description: ""/*, priority: "Low"*/ });
+      });
   };
 
   // boolean to tell whether the admin is editing or adding
@@ -39,6 +67,15 @@ const ServiceManagement = () => {
   const handleEdit = (service) => {
     setFormData(service);
     setIsEditing(service.id);
+  };
+
+  const handleDelete = (id) => {
+    fetch(`${SERVICES_PATH}/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((res) => res.json())
+      .then(() => fetchServices());
   };
 
   // in html, commenting out priority
@@ -78,19 +115,7 @@ const ServiceManagement = () => {
             ></textarea>
           </div>
 
-          {/* define the input for the service's expected duration */}
           <div className="row align-items-end">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Expected Duration* (minutes)</label>
-              <input
-                type="number"
-                className="form-control"
-                required
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              />
-            </div>
-
             <div className="col-md-6 mb-3 d-flex gap-2">            
               <button
                 type="submit"
@@ -107,7 +132,7 @@ const ServiceManagement = () => {
                   style={{ height: "45px", width: "120px", visibility: isEditing ? "visible" : "hidden", padding: "6px 12px"}} // keeps space
                   onClick={() => {
                     setIsEditing(null);
-                    setFormData({ name: "", description: "", duration: "" });
+                    setFormData({ name: "", description: "" });
                   }}
                 >
                   Cancel
@@ -149,7 +174,6 @@ const ServiceManagement = () => {
             <thead className="bg-transparent border-bottom">
               <tr>
                 <th>Name</th>
-                <th>Duration</th>
                 {/*<th>Priority</th>*/}
                 <th></th>
               </tr>
@@ -161,7 +185,6 @@ const ServiceManagement = () => {
                     <div><strong>{service.name}</strong></div>
                     <small className="fs-12 fw-normal text-muted text-truncate-1-line">{service.description}</small>
                   </td>
-                  <td>{service.duration} mins</td>
                   {/*<td>
                     <span
                       className={`badge ${
@@ -175,13 +198,20 @@ const ServiceManagement = () => {
                       {service.priority}
                     </span>
                   </td>*/}
-                  <td>
+                  <td className="d-flex gap-2">
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-primary"
                       onClick={() => handleEdit(service)}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDelete(service.id)}
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>

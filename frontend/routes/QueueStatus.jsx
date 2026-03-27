@@ -11,27 +11,36 @@ const QueueStatus = () => {
 
   const fetchQueueStatuses = async () => {
     try {
-      const userRes = await axios.get(
-        `http://localhost:3000/api/services?userId=${user.id}`,
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-      const userEntries = userRes.data;
+      // Get this user's queue entries
+      const myQueuesRes = await axios.get("http://localhost:3000/api/queue/my-queues", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const myEntries = myQueuesRes.data;
 
-      if (userEntries.length === 0) {
+      if (myEntries.length === 0) {
         setQueues([]);
         setLoading(false);
         return;
       }
 
+      // Get all services so we can look up names by serviceId
+      const servicesRes = await axios.get("http://localhost:3000/api/admin/services", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const allServices = servicesRes.data;
+
       const results = await Promise.all(
-        userEntries.map(async (entry) => {
+        myEntries.map(async (entry) => {
+          const svc = allServices.find((s) => s.id === entry.serviceId);
+          const serviceName = svc ? svc.name : "Unknown Service";
+
           try {
-            const response = await axios.get(
-              `http://localhost:3000/api/services?service=${encodeURIComponent(entry.service)}`,
+            const queueRes = await axios.get(
+              `http://localhost:3000/api/admin/queue/${entry.serviceId}`,
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
-            const active = response.data.filter((item) => item.isActive !== false);
-            const position = active.findIndex((item) => item.id === entry.id) + 1;
+            const queue = queueRes.data;
+            const position = queue.findIndex((e) => e.id === entry.id) + 1;
             const estimatedWait = position > 0 ? position * 5 : 0;
 
             let status = "Waiting";
@@ -39,18 +48,20 @@ const QueueStatus = () => {
             else if (position === 0) status = "Served";
 
             return {
-              service: entry.service,
+              service: serviceName,
+              serviceId: entry.serviceId,
               queueId: entry.id,
               priority: entry.priority,
               joinedAt: entry.date,
               position: position > 0 ? position : null,
               estimatedWait,
               status,
-              peopleInQueue: active.length,
+              peopleInQueue: queue.length,
             };
           } catch {
             return {
-              service: entry.service,
+              service: serviceName,
+              serviceId: entry.serviceId,
               queueId: entry.id,
               priority: entry.priority,
               joinedAt: entry.date,

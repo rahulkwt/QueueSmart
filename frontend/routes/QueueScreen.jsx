@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,127 +9,77 @@ const JoinQueue = () => {
   const { user } = useAuth();
   const decodedService = decodeURIComponent(service);
 
+  const [serviceId, setServiceId] = useState(null);
   const [joined, setJoined] = useState(false);
   const [priority, setPriority] = useState("Low");
   const [position, setPosition] = useState(null);
   const [estimatedWait, setEstimatedWait] = useState(null);
   const [peopleInQueue, setPeopleInQueue] = useState(null);
   const [status, setStatus] = useState("Waiting");
-  const [queueData, setQueueData] = useState([]);
   const [queueId, setQueueId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchQueue = async () => {
+  // Step 1: Look up serviceId by matching service name from admin services list
+  useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/admin/services", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then((res) => {
+        const svc = res.data.find((s) => s.name === decodedService);
+        if (svc) setServiceId(svc.id);
+      })
+      .catch((err) => console.error("Error fetching services:", err));
+  }, [decodedService]);
+
+  // Fetches the queue for this service and updates position if user is already in it
+  const fetchQueue = async (svcId) => {
+    if (!svcId) return 0;
     try {
-      const response = await axios.get(`http://localhost:3000/api/services?service=${encodeURIComponent(decodedService)}`);
-      const active = response.data.filter((item) => item.isActive !== false);
-      setQueueData(active);
-      setPeopleInQueue(active.length);
-      return active.length;
-    } catch (error) {
-      console.error("Error fetching queue:", error);
+      const res = await axios.get(`http://localhost:3000/api/admin/queue/${svcId}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const queue = res.data;
+      setPeopleInQueue(queue.length);
+
+      const myEntry = queue.find((e) => e.userId === user.id);
+      if (myEntry) {
+        setJoined(true);
+        setQueueId(myEntry.id);
+        setPriority(myEntry.priority || "Low");
+        const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
+        setPosition(pos);
+        setEstimatedWait(pos * 5);
+      } else if (joined) {
+        // User was served or removed by admin — reset
+        setJoined(false);
+        setQueueId(null);
+        setPosition(null);
+        setEstimatedWait(null);
+        setStatus("Waiting");
+      }
+
+      return queue.length;
+    } catch (err) {
+      console.error("Error fetching queue:", err);
       return 0;
     }
   };
 
-  const joinQueue = async () => {
-    try {
-      setLoading(true);
-
-      const response = await axios.post("http://localhost:3000/api/services", {
-        service: decodedService,
-        priority,
-        date: new Date().toISOString(),
-        status: "Waiting",
-        userId: user.id,
-      });
-
-      setQueueId(response.data.id);
-      setJoined(true);
-      window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
-
-      const count = await fetchQueue();
-      setPosition(count);
-      setEstimatedWait(count * 5);
-    } catch (error) {
-      console.error("Error joining queue:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const leaveQueue = async () => {
-    try {
-      setLoading(true);
-
-      if (!queueId) {
-        console.error("No queue id found.");
-      } else {
-        await axios.patch(`http://localhost:3000/api/services/${queueId}/leave`, {
-          leftReason: "User left queue",
-          leftBy: "user",
-        });
-      }
-    } catch (error) {
-      console.error("Error leaving queue:", error);
-    } finally {
-      setJoined(false);
-      setQueueId(null);
-      setPosition(null);
-      setEstimatedWait(null);
-      setStatus("Waiting");
-      await fetchQueue();
-      setLoading(false);
-    }
-  };
-
+  // Step 2: Once serviceId is known, load initial queue state and start polling
   useEffect(() => {
-    axios.get(`http://localhost:3000/api/services?service=${encodeURIComponent(decodedService)}&userId=${user.id}`)
-      .then((res) => {
-        const existing = res.data[0];
-        if (existing) {
-          setJoined(true);
-          setQueueId(existing.id);
-          setPriority(existing.priority);
-          fetchQueue().then((count) => {
-            setPosition(count);
-            setEstimatedWait(count * 5);
-          });
-        } else {
-          fetchQueue();
-        }
-      })
-      .catch(() => fetchQueue());
-  }, [decodedService]);
-
-  useEffect(() => {
-    if (!joined) return;
-
-    const interval = setInterval(() => {
-      setPosition((prev) => (prev > 0 ? prev - 1 : 0));
-      setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
-      setQueueData((prev) => {
-        const [first, ...rest] = prev;
-        if (first) {
-          axios.patch(`http://localhost:3000/api/services/${first.id}/leave`, {
-            status: "Completed",
-            leftReason: "Served",
-            leftBy: "system",
-          })
-            .then(() => fetchQueue())
-            .catch((err) => console.error("Error completing queue entry:", err));
-        }
-        return rest;
-      });
-    }, 10000);
-
+    if (!serviceId) return;
+    fetchQueue(serviceId);
+    const interval = setInterval(() => fetchQueue(serviceId), 10000);
     return () => clearInterval(interval);
-  }, [joined]);
+  }, [serviceId]);
 
+  // Update status label based on position
   useEffect(() => {
     if (position === null) return;
-    if (position > 1) setStatus("Waiting");
-    else if (position === 1) {
+    if (position > 1) {
+      setStatus("Waiting");
+    } else if (position === 1) {
       setStatus("Almost Ready");
       window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
     } else {
@@ -139,18 +88,46 @@ const JoinQueue = () => {
     }
   }, [position]);
 
-  useEffect(() => {
-    if (status !== "Served") return;
-    const timeout = setTimeout(async () => {
+  const joinQueue = async () => {
+    if (!serviceId) return;
+    try {
+      setLoading(true);
+      const res = await axios.post(
+        `http://localhost:3000/api/queue/${serviceId}/join`,
+        { priority },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setQueueId(res.data.id);
+      setJoined(true);
+      window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
+      await fetchQueue(serviceId);
+    } catch (err) {
+      console.error("Error joining queue:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const leaveQueue = async () => {
+    if (!queueId || !serviceId) return;
+    try {
+      setLoading(true);
+      await axios.delete(
+        `http://localhost:3000/api/queue/${serviceId}/${queueId}/leave`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+    } catch (err) {
+      console.error("Error leaving queue:", err);
+    } finally {
       setJoined(false);
       setQueueId(null);
       setPosition(null);
       setEstimatedWait(null);
       setStatus("Waiting");
-      await fetchQueue();
-    }, 2000);
-    return () => clearTimeout(timeout);
-  }, [status]);
+      await fetchQueue(serviceId);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="">
@@ -170,7 +147,7 @@ const JoinQueue = () => {
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
-            <p className="fs-4 mb-0">{estimatedWait ?? 0} minutes</p>
+            <p className="fs-4 mb-0">{estimatedWait ?? (peopleInQueue != null ? peopleInQueue * 5 : 0)} minutes</p>
           </div>
         </div>
       </div>
@@ -204,7 +181,7 @@ const JoinQueue = () => {
           <button
             className="btn btn-primary"
             onClick={joinQueue}
-            disabled={loading}
+            disabled={loading || !serviceId}
           >
             {loading ? "Joining..." : `Join ${decodedService} Queue`}
           </button>
@@ -253,23 +230,6 @@ const JoinQueue = () => {
           </button>
         </div>
       )}
-
-      <div className="card p-3 mt-4">
-        <h5>Current Queue Data</h5>
-        {queueData.map((item) => (
-          <div key={item.id} className="border-bottom py-2">
-            <p className="mb-1">
-              <strong>Service:</strong> {item.service}
-            </p>
-            <p className="mb-1">
-              <strong>Status:</strong> {item.status}
-            </p>
-            <p className="mb-0">
-              <strong>Priority:</strong> {item.priority || "N/A"}
-            </p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

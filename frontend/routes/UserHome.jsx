@@ -1,45 +1,57 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
-
-const services = [
-  { id: 1, name: "Pharmacy Pickup",        icon: "feather-package"  },
-  { id: 2, name: "Lab Work & Blood Tests", icon: "feather-activity" },
-  { id: 3, name: "General Consultation",   icon: "feather-user"     },
-  { id: 4, name: "Radiology / Imaging",    icon: "feather-aperture" },
-];
+import { useAuth } from "../context/AuthContext";
 
 const iconColors = [
   { bg: "#e8f0fe", icon: "#3b82f6" },
   { bg: "#fef3c7", icon: "#f59e0b" },
   { bg: "#dcfce7", icon: "#22c55e" },
   { bg: "#f3e8ff", icon: "#a855f7" },
+  { bg: "#fee2e2", icon: "#ef4444" },
+  { bg: "#e0f2fe", icon: "#0ea5e9" },
 ];
 
 const UserHome = () => {
+  const { user } = useAuth();
+  const [services, setServices] = useState([]);
   const [waitTimes, setWaitTimes] = useState({});
 
+  // Fetch configured services from the admin services endpoint
   useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/admin/services", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then((res) => setServices(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Fetch queue length for each service to calculate wait times
+  useEffect(() => {
+    if (services.length === 0) return;
+
     const fetchAll = async () => {
       const results = await Promise.all(
         services.map(async (svc) => {
           try {
             const res = await axios.get(
-              `http://localhost:3000/api/services?service=${encodeURIComponent(svc.name)}`
+              `http://localhost:3000/api/admin/queue/${svc.id}`,
+              { headers: { Authorization: `Bearer ${user.token}` } }
             );
-            const active = res.data.filter((item) => item.isActive !== false);
-            return { name: svc.name, wait: active.length * 5 };
+            return { id: svc.id, wait: res.data.length * 5 };
           } catch {
-            return { name: svc.name, wait: 0 };
+            return { id: svc.id, wait: 0 };
           }
         })
       );
       const map = {};
-      results.forEach(({ name, wait }) => { map[name] = wait; });
+      results.forEach(({ id, wait }) => { map[id] = wait; });
       setWaitTimes(map);
     };
+
     fetchAll();
-  }, []);
+  }, [services]);
 
   return (
     <div
@@ -47,15 +59,16 @@ const UserHome = () => {
         height: "100vh",
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gridTemplateRows: "1fr 1fr",
+        gridTemplateRows: services.length <= 2 ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))",
         gap: "1rem",
         padding: "1rem",
         boxSizing: "border-box",
+        alignContent: "start",
       }}
     >
       {services.map((svc, idx) => {
-        const color = iconColors[idx];
-        const wait = waitTimes[svc.name] ?? null;
+        const color = iconColors[idx % iconColors.length];
+        const wait = waitTimes[svc.id] ?? null;
         return (
           <Link
             key={svc.id}
@@ -73,6 +86,7 @@ const UserHome = () => {
                 justifyContent: "center",
                 gap: "1.25rem",
                 height: "100%",
+                minHeight: "180px",
                 boxSizing: "border-box",
                 transition: "box-shadow 0.18s, transform 0.18s",
                 cursor: "pointer",
@@ -99,10 +113,10 @@ const UserHome = () => {
                   justifyContent: "center",
                 }}
               >
-                <i className={svc.icon} style={{ fontSize: "2rem", color: color.icon }} />
+                <i className="feather-clock" style={{ fontSize: "2rem", color: color.icon }} />
               </div>
 
-              <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#111827", textAlign: "center" }}>
+              <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#111827", textAlign: "center", padding: "0 1rem" }}>
                 {svc.name}
               </div>
 
