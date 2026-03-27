@@ -61,7 +61,6 @@ const JoinQueue = () => {
 
       const count = await fetchQueue();
       setPosition(count);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
       const waitRes = await axios.get(
         `http://localhost:3000/api/queue/wait-time?position=${count}&isOpen=true`,
         { headers: { Authorization: `Bearer ${user.token}` } }
