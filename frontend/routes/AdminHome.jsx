@@ -1,7 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+const SERVICES_PATH = "http://localhost:3000/api/admin/services";
 
 const AdminHome = () => {
+  const { user } = useAuth();
+  const [apiServices, setApiServices] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = () => {
+      fetch(SERVICES_PATH, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setApiServices(data));
+    };
+
+    fetchServices();
+    const interval = setInterval(fetchServices, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Mock service data – replace with API later
   const [services, setServices] = useState([
     { id: 1, name: "General Consultation", queue: 12, avgWait: 18, open: true },
@@ -119,43 +139,15 @@ const AdminHome = () => {
                 <table className="table table-hover mb-0">
                   <thead className="table-light">
                     <tr>
-                      <th style={{ width: "35%" }}>Service</th>
-                      <th style={{ width: "15%" }}>Queue</th>
-                      <th style={{ width: "20%" }}>Est. Wait</th>
-                      <th style={{ width: "15%" }}>Status</th>
-                      <th style={{ width: "15%" }}>Action</th>
+                      <th>Service</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {services.map((svc) => (
+                    {apiServices.map((svc) => (
                       <tr key={svc.id}>
                         <td>
-                          <span className="fw-semibold small">{svc.name}</span>
-                        </td>
-                        <td>
-                          <span className="fw-bold text-primary">{svc.queue}</span>
-                          <span className="text-muted small ms-1">pts</span>
-                        </td>
-                        <td className="small text-muted">
-                          {svc.open ? `~${svc.avgWait} min` : "—"}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge border ${
-                              svc.open ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary"
-                            }`}
-                          >
-                            {svc.open ? "Open" : "Closed"}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className={`btn btn-sm ${svc.open ? "btn-outline-danger" : "btn-outline-success"}`}
-                            style={{ fontSize: "0.72rem", padding: "2px 8px" }}
-                            onClick={() => toggleService(svc.id)}
-                          >
-                            {svc.open ? "Close" : "Open"}
-                          </button>
+                          <div className="fw-semibold small">{svc.name}</div>
+                          <small className="text-muted">{svc.description}</small>
                         </td>
                       </tr>
                     ))}
