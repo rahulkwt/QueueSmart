@@ -28,7 +28,12 @@ const UserHome = () => {
               `http://localhost:3000/api/services?service=${encodeURIComponent(svc.name)}`
             );
             const active = res.data.filter((item) => item.isActive !== false);
-            return { name: svc.name, wait: active.length * 5 };
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const waitRes = await axios.get(
+              `http://localhost:3000/api/queue/wait-time?position=${active.length}&isOpen=true`,
+              { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            return { name: svc.name, wait: waitRes.data.estimatedWaitMinutes };
           } catch {
             return { name: svc.name, wait: 0 };
           }

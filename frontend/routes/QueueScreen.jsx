@@ -60,7 +60,12 @@ const JoinQueue = () => {
 
       const count = await fetchQueue();
       setPosition(count);
-      setEstimatedWait(count * 5);
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const waitRes = await axios.get(
+        `http://localhost:3000/api/queue/wait-time?position=${count}&isOpen=true`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setEstimatedWait(waitRes.data.estimatedWaitMinutes);
     } catch (error) {
       console.error("Error joining queue:", error);
     } finally {
@@ -101,9 +106,14 @@ const JoinQueue = () => {
       setJoined(true);
       setQueueId(existing.queueId);
       setPriority(existing.priority);
-      fetchQueue().then((count) => {
+      fetchQueue().then(async (count) => {
         setPosition(count);
-        setEstimatedWait(count * 5);
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const waitRes = await axios.get(
+          `http://localhost:3000/api/queue/wait-time?position=${count}&isOpen=true`,
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+        setEstimatedWait(waitRes.data.estimatedWaitMinutes);
       });
     } else {
       fetchQueue();
