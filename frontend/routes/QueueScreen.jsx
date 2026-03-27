@@ -92,6 +92,7 @@ const JoinQueue = () => {
     if (!serviceId) return;
     try {
       setLoading(true);
+<<<<<<< HEAD
       const res = await axios.post(
         `http://localhost:3000/api/queue/${serviceId}/join`,
         { priority },
@@ -103,6 +104,30 @@ const JoinQueue = () => {
       await fetchQueue(serviceId);
     } catch (err) {
       console.error("Error joining queue:", err);
+=======
+
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const response = await axios.post("http://localhost:3000/api/services", {
+        service: decodedService,
+        priority,
+        date: new Date().toISOString(),
+        status: "Waiting",
+      }, { headers: { Authorization: `Bearer ${user.token}` } });
+
+      setQueueId(response.data.id);
+      setJoined(true);
+      saveActiveQueue(response.data.id, priority);
+
+      const count = await fetchQueue();
+      setPosition(count);
+      const waitRes = await axios.get(
+        `http://localhost:3000/api/queue/wait-time?position=${count}&isOpen=true`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setEstimatedWait(waitRes.data.estimatedWaitMinutes);
+    } catch (error) {
+      console.error("Error joining queue:", error);
+>>>>>>> Alec-queuesmart
     } finally {
       setLoading(false);
     }
@@ -129,6 +154,75 @@ const JoinQueue = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
+    const existing = stored[decodedService];
+    if (existing) {
+      setJoined(true);
+      setQueueId(existing.queueId);
+      setPriority(existing.priority);
+      fetchQueue().then(async (count) => {
+        setPosition(count);
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const waitRes = await axios.get(
+          `http://localhost:3000/api/queue/wait-time?position=${count}&isOpen=true`,
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+        setEstimatedWait(waitRes.data.estimatedWaitMinutes);
+      });
+    } else {
+      fetchQueue();
+    }
+  }, [decodedService]);
+
+  useEffect(() => {
+    if (!joined) return;
+
+    const interval = setInterval(() => {
+      setPosition((prev) => (prev > 0 ? prev - 1 : 0));
+      setEstimatedWait((prev) => (prev > 5 ? prev - 5 : 5));
+      setQueueData((prev) => {
+        const [first, ...rest] = prev;
+        if (first) {
+          axios.patch(`http://localhost:3000/api/services/${first.id}/leave`, {
+            status: "Completed",
+            leftReason: "Served",
+            leftBy: "system",
+          })
+            .then(() => fetchQueue())
+            .catch((err) => console.error("Error completing queue entry:", err));
+        }
+        return rest;
+      });
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [joined]);
+
+  useEffect(() => {
+    if (position === null) return;
+    if (position > 1) setStatus("Waiting");
+    else if (position === 1) setStatus("Almost Ready");
+    else setStatus("Served");
+  }, [position]);
+
+  useEffect(() => {
+    if (status !== "Served") return;
+    const timeout = setTimeout(async () => {
+      setJoined(false);
+      setQueueId(null);
+      setPosition(null);
+      setEstimatedWait(null);
+      setStatus("Waiting");
+      removeActiveQueue();
+      await fetchQueue();
+    }, 2000);
+    return () => clearTimeout(timeout);
+  }, [status]);
+
+>>>>>>> Alec-queuesmart
   return (
     <div className="">
       <button className="btn btn-outline-secondary mb-3" onClick={() => navigate("/portal/user")}>

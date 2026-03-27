@@ -39,7 +39,17 @@ const UserHome = () => {
               `http://localhost:3000/api/admin/queue/${svc.id}`,
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
+<<<<<<< HEAD
             return { id: svc.id, wait: res.data.length * 5 };
+=======
+            const active = res.data.filter((item) => item.isActive !== false);
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const waitRes = await axios.get(
+              `http://localhost:3000/api/queue/wait-time?position=${active.length}&isOpen=true`,
+              { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            return { name: svc.name, wait: waitRes.data.estimatedWaitMinutes };
+>>>>>>> Alec-queuesmart
           } catch {
             return { id: svc.id, wait: 0 };
           }

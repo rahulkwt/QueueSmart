@@ -80,6 +80,56 @@ const QueueStatus = () => {
       setQueues([]);
       setLoading(false);
     }
+<<<<<<< HEAD
+=======
+
+    const results = await Promise.all(
+      entries.map(async ([service, info]) => {
+        try {
+          const response = await axios.get(
+            `http://localhost:3000/api/services?service=${encodeURIComponent(service)}`
+          );
+          const active = response.data.filter((item) => item.isActive !== false);
+          const position = active.findIndex((item) => item.id === info.queueId) + 1;
+          const user = JSON.parse(localStorage.getItem("user") || "{}");
+          const waitRes = await axios.get(
+            `http://localhost:3000/api/queue/wait-time?position=${position}&isOpen=true`,
+            { headers: { Authorization: `Bearer ${user.token}` } }
+          );
+          const estimatedWait = waitRes.data.estimatedWaitMinutes ?? 0;
+
+          let status = "Waiting";
+          if (position === 1) status = "Almost Ready";
+          else if (position === 0) status = "Served";
+
+          return {
+            service,
+            queueId: info.queueId,
+            priority: info.priority,
+            joinedAt: info.joinedAt,
+            position: position > 0 ? position : null,
+            estimatedWait,
+            status,
+            peopleInQueue: active.length,
+          };
+        } catch {
+          return {
+            service,
+            queueId: info.queueId,
+            priority: info.priority,
+            joinedAt: info.joinedAt,
+            position: null,
+            estimatedWait: null,
+            status: "Unknown",
+            peopleInQueue: null,
+          };
+        }
+      })
+    );
+
+    setQueues(results);
+    setLoading(false);
+>>>>>>> Alec-queuesmart
   };
 
   useEffect(() => {

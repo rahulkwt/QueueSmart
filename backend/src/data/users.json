@@ -6,7 +6,11 @@
     "username": "rahulsunil",
     "password": "qazwsx",
     "role": "user",
+<<<<<<< HEAD
     "token": "b9c96e23-ce4b-4a0f-ae61-95a586f87eef"
+=======
+    "token": "e0359377-1298-4cfa-b9e8-e0ea90ceba25"
+>>>>>>> Alec-queuesmart
   },
   {
     "id": "83958ea6-2428-42f0-b9ec-fd7a100fac8a",
@@ -33,6 +37,10 @@
     "username": "admin",
     "password": "admin123",
     "role": "admin",
+<<<<<<< HEAD
     "token": "48659986-4b64-45b8-a712-910a8e4b86bc"
+=======
+    "token": "ee304be3-6d4d-4cf7-a1ee-a4c1236e7168"
+>>>>>>> Alec-queuesmart
   }
 ]
