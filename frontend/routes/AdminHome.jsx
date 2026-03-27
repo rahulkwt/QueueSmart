@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const SERVICES_PATH = "http://localhost:3000/api/admin/services";
+const SERVICES_PATH = "http://localhost:3000/api/admin/services/with-counts";
 
 const AdminHome = () => {
   const { user } = useAuth();
@@ -140,6 +140,7 @@ const AdminHome = () => {
                   <thead className="table-light">
                     <tr>
                       <th>Service</th>
+                      <th>Queue</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -148,6 +149,10 @@ const AdminHome = () => {
                         <td>
                           <div className="fw-semibold small">{svc.name}</div>
                           <small className="text-muted">{svc.description}</small>
+                        </td>
+                        <td>
+                          <span className="fw-bold text-primary">{svc.queueCount}</span>
+                          <span className="text-muted small ms-1">{svc.queueCount == 1 ? "patient" : "patients"}</span>
                         </td>
                       </tr>
                     ))}

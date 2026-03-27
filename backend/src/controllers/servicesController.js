@@ -5,6 +5,7 @@ import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVICES_FILE = join(__dirname, "../data/services.json");
+const QUEUE_FILE = join(__dirname, "../data/queue.json");
 
 /**
  * Reads and parses the services JSON file from disk.
@@ -29,6 +30,23 @@ function writeServices(services) {
  */
 export function getServices(req, res) {
   return res.status(200).json(readServices());
+}
+
+/**
+ * Returns all configured services, each enriched with its current queue count.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res - 200 with array of { id, name, description, queueCount }.
+ */
+export function getServicesWithCounts(req, res) {
+  const services = readServices();
+  const queue = JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
+
+  const result = services.map((svc) => ({
+    ...svc,
+    queueCount: queue.filter((entry) => entry.serviceId === svc.id).length,
+  }));
+
+  return res.status(200).json(result);
 }
 
 /**
