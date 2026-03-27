@@ -1,10 +1,9 @@
+// FOURTH
+
 import express from "express";
 import cors from "cors";
 import historyRoutes from "./src/routes/historyRoutes.js";
 import authRoutes from "./src/routes/authRoutes.js";
-import waitTimeRoutes from "./src/routes/waitTimeRoutes.js";
-import serviceRoutes from "./src/routes/routes.js";
-
 import servicesRoute from "./src/routes/servicesRoute.js";
 import queueRoutes from "./src/routes/queueRoutes.js";
 const app = express();
@@ -14,9 +13,6 @@ app.use(express.json()); // parse incoming JSON request bodies (required for req
 
 app.use("/api/user", historyRoutes);
 app.use("/api/auth", authRoutes); // mount auth routes: /api/auth/register, /api/auth/login
-app.use("/api", waitTimeRoutes);  // mount wait-time routes: /api/queue/wait-time
-app.use("/api", serviceRoutes); // mount service routes: /api/services
-
 app.use("/api/admin", servicesRoute);
 app.use("/api/admin", queueRoutes);
 // run another terminal process
@@ -25,10 +21,6 @@ app.use("/api/admin", queueRoutes);
 // data is now able to be fetched
 const PORT = 3000;
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-
-server.on("error", (err) => {
-  console.error("Server error:", err);
 });
