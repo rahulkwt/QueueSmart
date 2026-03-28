@@ -1,4 +1,4 @@
-export const historyData = [
+export const serviceData = [
   {
     id: 1,
     service: "General Consultation",
@@ -16,5 +16,3 @@ export const historyData = [
     status: "Completed"
   }
 ];
-
-export const idState = { nextId: 3 };

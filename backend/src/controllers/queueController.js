@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "fs";
+import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -109,4 +110,73 @@ export function moveUp(req, res) {
   writeQueue(all);
 
   return res.status(200).json(all.filter((e) => e.serviceId === serviceId));
+}
+
+/**
+ * Adds the authenticated user to a service's queue.
+ * @param {import('express').Request} req - Params: { serviceId }. Body: { priority }
+ * @param {import('express').Response} res - 201 with the new entry, 400 if already in queue.
+ */
+export function joinQueue(req, res) {
+  const { serviceId } = req.params;
+  const { priority } = req.body;
+  const userId = req.user.id;
+  const name = req.user.name || req.user.username;
+
+  const all = readQueue();
+
+  const existing = all.find((e) => e.serviceId === serviceId && e.userId === userId);
+  if (existing) {
+    return res.status(400).json({ message: "Already in this queue." });
+  }
+
+  const entry = {
+    id: randomUUID(),
+    serviceId,
+    userId,
+    name,
+    priority: priority || "Low",
+    date: new Date().toISOString(),
+    status: "Waiting",
+  };
+
+  all.push(entry);
+  writeQueue(all);
+
+  return res.status(201).json(entry);
+}
+
+/**
+ * Removes the authenticated user's entry from a service's queue.
+ * @param {import('express').Request} req - Params: { serviceId, entryId }
+ * @param {import('express').Response} res - 200 on success, 404 if not found.
+ */
+export function leaveQueue(req, res) {
+  const { serviceId, entryId } = req.params;
+  const userId = req.user.id;
+
+  const all = readQueue();
+  const index = all.findIndex(
+    (e) => e.id === entryId && e.serviceId === serviceId && e.userId === userId
+  );
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Entry not found." });
+  }
+
+  all.splice(index, 1);
+  writeQueue(all);
+
+  return res.status(200).json({ message: "Left queue." });
+}
+
+/**
+ * Returns all queue entries belonging to the authenticated user.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res - 200 with array of user's queue entries.
+ */
+export function getMyQueues(req, res) {
+  const userId = req.user.id;
+  const entries = readQueue().filter((e) => e.userId === userId);
+  return res.status(200).json(entries);
 }

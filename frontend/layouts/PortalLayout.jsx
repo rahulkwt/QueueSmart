@@ -33,7 +33,7 @@ const PortalLayout = () => {
             flexDirection: "column",
           }}
         >
-          <Navbar />
+          <Navbar isAdmin={isAdmin} />
           <div style={{ flex: 1,
             position: "fixed",
             left: "280px",
