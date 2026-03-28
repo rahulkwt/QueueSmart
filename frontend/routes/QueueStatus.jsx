@@ -43,7 +43,7 @@ const QueueStatus = () => {
             const position = queue.findIndex((e) => e.id === entry.id) + 1;
             const estimatedWait = position > 0 ? position * 5 : 0;
 
-            let status = "Waiting";
+            let status = "Pending";
             if (position === 1) status = "Almost Ready";
             else if (position === 0) status = "Served";
 

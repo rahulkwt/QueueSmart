@@ -16,6 +16,7 @@ const UserHome = () => {
   const { user } = useAuth();
   const [services, setServices] = useState([]);
   const [waitTimes, setWaitTimes] = useState({});
+  const [recentHistory, setRecentHistory] = useState([]);
 
   // Fetch configured services from the admin services endpoint
   useEffect(() => {
@@ -24,6 +25,16 @@ const UserHome = () => {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       .then((res) => setServices(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Fetch the authenticated user's history for the recent visits section
+  useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/user/history", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then((res) => setRecentHistory(res.data.slice(-3).reverse()))
       .catch(() => {});
   }, []);
 
@@ -56,93 +67,145 @@ const UserHome = () => {
   return (
     <div
       style={{
-        height: "100vh",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gridTemplateRows: services.length <= 2 ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
         gap: "1rem",
         padding: "1rem",
         boxSizing: "border-box",
-        alignContent: "start",
       }}
     >
-      {services.map((svc, idx) => {
-        const color = iconColors[idx % iconColors.length];
-        const wait = waitTimes[svc.id] ?? null;
-        return (
-          <Link
-            key={svc.id}
-            to={`/portal/user/queue/${encodeURIComponent(svc.name)}`}
-            style={{ textDecoration: "none" }}
-          >
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: "1.25rem",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "1.25rem",
-                height: "100%",
-                minHeight: "180px",
-                boxSizing: "border-box",
-                transition: "box-shadow 0.18s, transform 0.18s",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow =
-                  "0 4px 16px rgba(0,0,0,0.1), 0 8px 32px rgba(0,0,0,0.07)";
-                e.currentTarget.style.transform = "scale(1.01)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow =
-                  "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: services.length <= 2 ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: "1rem",
+          alignContent: "start",
+        }}
+      >
+        {services.map((svc, idx) => {
+          const color = iconColors[idx % iconColors.length];
+          const wait = waitTimes[svc.id] ?? null;
+          return (
+            <Link
+              key={svc.id}
+              to={`/portal/user/queue/${encodeURIComponent(svc.name)}`}
+              style={{ textDecoration: "none" }}
             >
               <div
                 style={{
-                  width: 72,
-                  height: 72,
+                  background: "#fff",
                   borderRadius: "1.25rem",
-                  background: color.bg,
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: "1.25rem",
+                  height: "100%",
+                  minHeight: "180px",
+                  boxSizing: "border-box",
+                  transition: "box-shadow 0.18s, transform 0.18s",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 16px rgba(0,0,0,0.1), 0 8px 32px rgba(0,0,0,0.07)";
+                  e.currentTarget.style.transform = "scale(1.01)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)";
+                  e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                <i className="feather-clock" style={{ fontSize: "2rem", color: color.icon }} />
-              </div>
-
-              <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#111827", textAlign: "center", padding: "0 1rem" }}>
-                {svc.name}
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <span
+                <div
                   style={{
-                    background: "#dcfce7",
-                    color: "#16a34a",
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    padding: "0.2rem 0.6rem",
-                    borderRadius: "999px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.03em",
+                    width: 72,
+                    height: 72,
+                    borderRadius: "1.25rem",
+                    background: color.bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  Open
-                </span>
-                <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
-                  {wait === null ? "Loading..." : `~${wait} min wait`}
-                </span>
+                  <i className="feather-clock" style={{ fontSize: "2rem", color: color.icon }} />
+                </div>
+
+                <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#111827", textAlign: "center", padding: "0 1rem" }}>
+                  {svc.name}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span
+                    style={{
+                      background: "#dcfce7",
+                      color: "#16a34a",
+                      fontSize: "0.72rem",
+                      fontWeight: 600,
+                      padding: "0.2rem 0.6rem",
+                      borderRadius: "999px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    Open
+                  </span>
+                  <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
+                    {wait === null ? "Loading..." : `~${wait} min wait`}
+                  </span>
+                </div>
               </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {recentHistory.length > 0 && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "1.25rem",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
+            padding: "1.25rem 1.5rem",
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: "1rem", color: "#111827", marginBottom: "0.75rem" }}>
+            Recent Visits
+          </div>
+          {recentHistory.map((entry) => (
+            <div
+              key={entry.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0.5rem 0",
+                borderBottom: "1px solid #f3f4f6",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#111827" }}>{entry.service}</div>
+                <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>{entry.date}</div>
+              </div>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  padding: "0.2rem 0.6rem",
+                  borderRadius: "999px",
+                  background: entry.status === "Completed" ? "#dcfce7" : entry.status === "Cancelled" ? "#fee2e2" : "#fef3c7",
+                  color: entry.status === "Completed" ? "#16a34a" : entry.status === "Cancelled" ? "#dc2626" : "#92400e",
+                }}
+              >
+                {entry.status}
+              </span>
             </div>
-          </Link>
-        );
-      })}
+          ))}
+        </div>
+      )}
     </div>
   );
 };

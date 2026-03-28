@@ -22,15 +22,6 @@ const AdminHome = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Mock service data – replace with API later
-  const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", queue: 12, avgWait: 18, open: true },
-    { id: 2, name: "Pharmacy Pickup", queue: 5, avgWait: 5, open: true },
-    { id: 3, name: "Lab Work & Blood Tests", queue: 8, avgWait: 22, open: true },
-    { id: 4, name: "Radiology / Imaging", queue: 3, avgWait: 35, open: true },
-    { id: 5, name: "Emergency Triage", queue: 0, avgWait: 0, open: false },
-  ]);
-
   const recentActivity = [
     { id: 1, type: "joined", patient: "Patient P-20489", service: "General Consultation", time: "2 min ago" },
     { id: 2, type: "served", patient: "Patient P-18821", service: "Lab Work & Blood Tests", time: "5 min ago" },
@@ -39,18 +30,12 @@ const AdminHome = () => {
     { id: 5, type: "joined", patient: "Patient P-20502", service: "Radiology / Imaging", time: "15 min ago" },
   ];
 
-  const totalPatients = services.reduce((acc, s) => acc + s.queue, 0);
-  const openServices = services.filter((s) => s.open).length;
-  const avgWaitAll = Math.round(
-    services.filter((s) => s.open && s.avgWait > 0).reduce((acc, s) => acc + s.avgWait, 0) /
-      services.filter((s) => s.open && s.avgWait > 0).length
-  );
-
-  const toggleService = (id) => {
-    setServices((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, open: !s.open } : s))
-    );
-  };
+  const totalPatients = apiServices.reduce((acc, s) => acc + (s.queueCount || 0), 0);
+  const openServices = apiServices.length;
+  const servicesWithQueue = apiServices.filter((s) => s.queueCount > 0);
+  const avgWaitAll = servicesWithQueue.length > 0
+    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * 5, 0) / servicesWithQueue.length)
+    : 0;
 
   const activityIcon = {
     joined: { icon: "feather-user-plus", color: "text-primary" },
@@ -97,7 +82,7 @@ const AdminHome = () => {
               </div>
               <div>
                 <div className="text-muted small text-uppercase fw-semibold">Open Services</div>
-                <div className="fs-4 fw-bold">{openServices} / {services.length}</div>
+                <div className="fs-4 fw-bold">{openServices} / {apiServices.length}</div>
                 <div className="text-muted" style={{ fontSize: "0.78rem" }}>Currently active</div>
               </div>
             </div>
