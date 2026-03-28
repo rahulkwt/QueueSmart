@@ -1,5 +1,3 @@
-// FIRST
-
 export const historyData = [
   {
     id: 1,
@@ -18,3 +16,5 @@ export const historyData = [
     status: "Completed"
   }
 ];
+
+export const idState = { nextId: 3 };
