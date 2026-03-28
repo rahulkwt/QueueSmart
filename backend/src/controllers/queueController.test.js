@@ -9,9 +9,15 @@ import { readFileSync, writeFileSync } from "fs";
 import { getQueue, serveNext, removeFromQueue, moveUp } from "./queueController.js";
 
 const mockQueue = [
-  { id: "e1", name: "Alice", serviceId: "svc-1" },
-  { id: "e2", name: "Bob", serviceId: "svc-1" },
-  { id: "e3", name: "Carol", serviceId: "svc-2" },
+  { id: "e1", name: "Alice", userId: "user-1", serviceId: "svc-1" },
+  { id: "e2", name: "Bob",   userId: "user-2", serviceId: "svc-1" },
+  { id: "e3", name: "Carol", userId: "user-3", serviceId: "svc-2" },
+];
+
+// Pending history entries that serveNext/removeFromQueue should resolve
+const mockHistory = [
+  { id: 1, userId: "user-1", serviceId: "svc-1", service: "Test", doctor: "", date: "01-01-2026", notes: "", status: "Pending" },
+  { id: 2, userId: "user-3", serviceId: "svc-2", service: "Test", doctor: "", date: "01-01-2026", notes: "", status: "Pending" },
 ];
 
 const mockRes = () => {
@@ -23,7 +29,11 @@ const mockRes = () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  readFileSync.mockReturnValue(JSON.stringify(mockQueue));
+  // Return the right data based on which file is being read
+  readFileSync.mockImplementation((filePath) => {
+    if (String(filePath).includes("history")) return JSON.stringify(mockHistory);
+    return JSON.stringify(mockQueue);
+  });
   writeFileSync.mockImplementation(() => {});
 });
 
@@ -67,9 +77,20 @@ describe("serveNext", () => {
     const req = { params: { serviceId: "svc-1" } };
     const res = mockRes();
     serveNext(req, res);
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    const queueWrite = writeFileSync.mock.calls.find(([p]) => String(p).includes("queue"));
+    const saved = JSON.parse(queueWrite[1]);
     expect(saved.find((e) => e.id === "e1")).toBeUndefined();
     expect(saved).toHaveLength(2);
+  });
+
+  it("updates the served user's pending history entry to Completed", () => {
+    const req = { params: { serviceId: "svc-1" } };
+    const res = mockRes();
+    serveNext(req, res);
+    const historyWrite = writeFileSync.mock.calls.find(([p]) => String(p).includes("history"));
+    expect(historyWrite).toBeDefined();
+    const savedHistory = JSON.parse(historyWrite[1]);
+    expect(savedHistory.find((e) => e.userId === "user-1").status).toBe("Completed");
   });
 });
 
@@ -94,9 +115,20 @@ describe("removeFromQueue", () => {
     const res = mockRes();
     removeFromQueue(req, res);
     expect(res.statusCode).toBe(200);
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    const queueWrite = writeFileSync.mock.calls.find(([p]) => String(p).includes("queue"));
+    const saved = JSON.parse(queueWrite[1]);
     expect(saved.find((e) => e.id === "e1")).toBeUndefined();
     expect(saved).toHaveLength(2);
+  });
+
+  it("updates the removed user's pending history entry to Cancelled", () => {
+    const req = { params: { serviceId: "svc-2", entryId: "e3" } };
+    const res = mockRes();
+    removeFromQueue(req, res);
+    const historyWrite = writeFileSync.mock.calls.find(([p]) => String(p).includes("history"));
+    expect(historyWrite).toBeDefined();
+    const savedHistory = JSON.parse(historyWrite[1]);
+    expect(savedHistory.find((e) => e.userId === "user-3").status).toBe("Cancelled");
   });
 });
 
@@ -129,7 +161,8 @@ describe("moveUp", () => {
     const req = { params: { serviceId: "svc-1", entryId: "e2" } };
     const res = mockRes();
     moveUp(req, res);
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    const queueWrite = writeFileSync.mock.calls.find(([p]) => String(p).includes("queue"));
+    const saved = JSON.parse(queueWrite[1]);
     const svc2Entry = saved.find((e) => e.serviceId === "svc-2");
     expect(svc2Entry.id).toBe("e3");
   });

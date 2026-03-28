@@ -1,10 +1,25 @@
-import { historyData, idState } from "../mock/historyData.js";
+import { readFileSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const HISTORY_FILE = join(__dirname, "../data/history.json");
 
 const VALID_STATUSES = ["Pending", "Completed", "Cancelled", "Aborted"];
 const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
 
+function readHistory() {
+  return JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
+}
+
+function writeHistory(history) {
+  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
+
 export const getHistory = (req, res) => {
-  res.json(historyData);
+  const userId = req.user.id;
+  const history = readHistory().filter((entry) => entry.userId === userId);
+  res.json(history);
 };
 
 export const getHistoryByUser = (req, res) => {
@@ -12,14 +27,19 @@ export const getHistoryByUser = (req, res) => {
   if (!userId) {
     return res.status(400).json({ error: "userId is required." });
   }
-  res.json(historyData.filter((entry) => entry.userId === userId));
+  res.json(readHistory().filter((entry) => entry.userId === userId));
 };
 
 export const addHistory = (req, res) => {
-  const { userId, service, doctor, date, notes, status } = req.body;
+  const userId = req.user?.id || req.body.userId;
+  const { service, serviceId, date, notes, status } = req.body;
+  const doctor = req.body.doctor || "";
 
-  if (!userId || !service || !doctor || !date || !status) {
-    const missing = ["userId", "service", "doctor", "date", "status"].find((f) => !req.body[f]);
+  if (!userId || !service || !date || !status) {
+    const missing = ["userId", "service", "date", "status"].find((f) => {
+      if (f === "userId") return !userId;
+      return !req.body[f];
+    });
     return res.status(400).json({ error: `${missing} is required.` });
   }
 
@@ -43,9 +63,41 @@ export const addHistory = (req, res) => {
     return res.status(400).json({ error: "notes exceeds max length of 300." });
   }
 
-  const newEntry = { id: idState.nextId++, userId, service, doctor, date, notes: notes || "", status };
-  historyData.push(newEntry);
+  const history = readHistory();
+  const maxId = history.reduce((max, e) => Math.max(max, e.id), 0);
+  const newEntry = { id: maxId + 1, userId, service, doctor, date, notes: notes || "", status };
+  if (serviceId) newEntry.serviceId = serviceId;
+  history.push(newEntry);
+  writeHistory(history);
   res.status(201).json(newEntry);
+};
+
+export const updateHistoryEntry = (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  const { status } = req.body;
+
+  if (isNaN(numId) || !Number.isInteger(numId) || numId <= 0) {
+    return res.status(400).json({ error: "id must be a positive integer." });
+  }
+
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
+  }
+
+  const history = readHistory();
+  const index = history.findIndex((entry) => entry.id === numId);
+  if (index === -1) {
+    return res.status(404).json({ error: `Record with id ${id} not found.` });
+  }
+
+  if (history[index].userId !== req.user.id) {
+    return res.status(403).json({ error: "Forbidden." });
+  }
+
+  history[index].status = status;
+  writeHistory(history);
+  res.json(history[index]);
 };
 
 export const deleteHistory = (req, res) => {
@@ -59,11 +111,13 @@ export const deleteHistory = (req, res) => {
     return res.status(400).json({ error: "id must be a positive integer." });
   }
 
-  const index = historyData.findIndex((entry) => entry.id === numId);
+  const history = readHistory();
+  const index = history.findIndex((entry) => entry.id === numId);
   if (index === -1) {
     return res.status(404).json({ error: `Record with id ${id} not found.` });
   }
 
-  const [deleted] = historyData.splice(index, 1);
+  const [deleted] = history.splice(index, 1);
+  writeHistory(history);
   res.json({ deleted });
 };
