@@ -1,16 +1,20 @@
-# React + Vite
+You need Node.js and this comes with Node Package Manager (npm).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Currently, two official plugins are available:
+# necessary libraries
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Write in the terminal: `npm install`.
 
-## React Compiler
+# running the frontend and server (must do both)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Write in one terminal: `npm run dev`.
+Write in another terminal: `node ./backend/server.js` or `cd backend; node server.js`.
 
-## Expanding the ESLint configuration
+# running unit tests
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Write in the terminal: `cd backend; npm run test`.
+
+# profiles to log in
+
+Found in the file `./backend/src/data/users.json`.
+Use the email and password.

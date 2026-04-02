@@ -5,6 +5,24 @@ import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const QUEUE_FILE = join(__dirname, "../data/queue.json");
+const HISTORY_FILE = join(__dirname, "../data/history.json");
+
+/**
+ * Finds the most recent Pending history entry for a given user+service and
+ * updates its status. Used by admin serve/remove actions to keep history accurate.
+ */
+function resolvePendingHistory(userId, serviceId, outcome) {
+  try {
+    const history = JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
+    const index = history.findIndex(
+      (e) => e.userId === userId && e.serviceId === serviceId && e.status === "Pending"
+    );
+    if (index !== -1) {
+      history[index].status = outcome;
+      writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+    }
+  } catch { /* non-critical — history update should not fail a queue operation */ }
+}
 
 /**
  * Reads and parses the queue JSON file from disk.
@@ -49,6 +67,7 @@ export function serveNext(req, res) {
 
   const [served] = all.splice(firstIndex, 1);
   writeQueue(all);
+  resolvePendingHistory(served.userId, served.serviceId, "Completed");
 
   return res.status(200).json(served);
 }
@@ -70,8 +89,10 @@ export function removeFromQueue(req, res) {
     return res.status(404).json({ message: "Entry not found in queue." });
   }
 
+  const removed = all[index];
   all.splice(index, 1);
   writeQueue(all);
+  resolvePendingHistory(removed.userId, removed.serviceId, "Cancelled");
 
   return res.status(200).json({ message: "Removed from queue." });
 }
@@ -164,8 +185,10 @@ export function leaveQueue(req, res) {
     return res.status(404).json({ message: "Entry not found." });
   }
 
+  const left = all[index];
   all.splice(index, 1);
   writeQueue(all);
+  resolvePendingHistory(left.userId, left.serviceId, "Cancelled");
 
   return res.status(200).json({ message: "Left queue." });
 }

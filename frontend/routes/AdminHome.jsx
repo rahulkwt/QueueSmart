@@ -1,15 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+const SERVICES_PATH = "http://localhost:3000/api/admin/services/with-counts";
 
 const AdminHome = () => {
-  // Mock service data – replace with API later
-  const [services, setServices] = useState([
-    { id: 1, name: "General Consultation", queue: 12, avgWait: 18, open: true },
-    { id: 2, name: "Pharmacy Pickup", queue: 5, avgWait: 5, open: true },
-    { id: 3, name: "Lab Work & Blood Tests", queue: 8, avgWait: 22, open: true },
-    { id: 4, name: "Radiology / Imaging", queue: 3, avgWait: 35, open: true },
-    { id: 5, name: "Emergency Triage", queue: 0, avgWait: 0, open: false },
-  ]);
+  const { user } = useAuth();
+  const [apiServices, setApiServices] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = () => {
+      fetch(SERVICES_PATH, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setApiServices(data));
+    };
+
+    fetchServices();
+    const interval = setInterval(fetchServices, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const recentActivity = [
     { id: 1, type: "joined", patient: "Patient P-20489", service: "General Consultation", time: "2 min ago" },
@@ -19,18 +30,12 @@ const AdminHome = () => {
     { id: 5, type: "joined", patient: "Patient P-20502", service: "Radiology / Imaging", time: "15 min ago" },
   ];
 
-  const totalPatients = services.reduce((acc, s) => acc + s.queue, 0);
-  const openServices = services.filter((s) => s.open).length;
-  const avgWaitAll = Math.round(
-    services.filter((s) => s.open && s.avgWait > 0).reduce((acc, s) => acc + s.avgWait, 0) /
-      services.filter((s) => s.open && s.avgWait > 0).length
-  );
-
-  const toggleService = (id) => {
-    setServices((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, open: !s.open } : s))
-    );
-  };
+  const totalPatients = apiServices.reduce((acc, s) => acc + (s.queueCount || 0), 0);
+  const openServices = apiServices.length;
+  const servicesWithQueue = apiServices.filter((s) => s.queueCount > 0);
+  const avgWaitAll = servicesWithQueue.length > 0
+    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * 5, 0) / servicesWithQueue.length)
+    : 0;
 
   const activityIcon = {
     joined: { icon: "feather-user-plus", color: "text-primary" },
@@ -77,7 +82,7 @@ const AdminHome = () => {
               </div>
               <div>
                 <div className="text-muted small text-uppercase fw-semibold">Open Services</div>
-                <div className="fs-4 fw-bold">{openServices} / {services.length}</div>
+                <div className="fs-4 fw-bold">{openServices} / {apiServices.length}</div>
                 <div className="text-muted" style={{ fontSize: "0.78rem" }}>Currently active</div>
               </div>
             </div>
@@ -119,43 +124,20 @@ const AdminHome = () => {
                 <table className="table table-hover mb-0">
                   <thead className="table-light">
                     <tr>
-                      <th style={{ width: "35%" }}>Service</th>
-                      <th style={{ width: "15%" }}>Queue</th>
-                      <th style={{ width: "20%" }}>Est. Wait</th>
-                      <th style={{ width: "15%" }}>Status</th>
-                      <th style={{ width: "15%" }}>Action</th>
+                      <th>Service</th>
+                      <th>Queue</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {services.map((svc) => (
+                    {apiServices.map((svc) => (
                       <tr key={svc.id}>
                         <td>
-                          <span className="fw-semibold small">{svc.name}</span>
+                          <div className="fw-semibold small">{svc.name}</div>
+                          <small className="text-muted">{svc.description}</small>
                         </td>
                         <td>
-                          <span className="fw-bold text-primary">{svc.queue}</span>
-                          <span className="text-muted small ms-1">pts</span>
-                        </td>
-                        <td className="small text-muted">
-                          {svc.open ? `~${svc.avgWait} min` : "—"}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge border ${
-                              svc.open ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary"
-                            }`}
-                          >
-                            {svc.open ? "Open" : "Closed"}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className={`btn btn-sm ${svc.open ? "btn-outline-danger" : "btn-outline-success"}`}
-                            style={{ fontSize: "0.72rem", padding: "2px 8px" }}
-                            onClick={() => toggleService(svc.id)}
-                          >
-                            {svc.open ? "Close" : "Open"}
-                          </button>
+                          <span className="fw-bold text-primary">{svc.queueCount}</span>
+                          <span className="text-muted small ms-1">{svc.queueCount == 1 ? "patient" : "patients"}</span>
                         </td>
                       </tr>
                     ))}

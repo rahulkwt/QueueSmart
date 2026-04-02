@@ -6,7 +6,7 @@
     "username": "rahulsunil",
     "password": "qazwsx",
     "role": "user",
-    "token": "c0d2158b-9c12-4b7e-a2f7-04b97719ba71"
+    "token": "0dbead3a-b804-4ae0-964b-f0903a263257"
   },
   {
     "id": "83958ea6-2428-42f0-b9ec-fd7a100fac8a",
@@ -33,6 +33,6 @@
     "username": "admin",
     "password": "admin123",
     "role": "admin",
-    "token": "48659986-4b64-45b8-a712-910a8e4b86bc"
+    "token": "1648c183-f945-44e7-9d56-d27e9d57919c"
   }
 ]
