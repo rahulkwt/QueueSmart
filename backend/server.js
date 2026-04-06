@@ -1,3 +1,11 @@
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+// Resolve .env from the project root regardless of where `node` is invoked from
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, "../.env") });
+
 import express from "express";
 import cors from "cors";
 import historyRoutes from "./src/routes/historyRoutes.js";

@@ -1,0 +1,2 @@
+-- PostgreSQL does not require explicit strict mode or foreign key check settings.
+-- Foreign key constraints are enforced by default when declared.
