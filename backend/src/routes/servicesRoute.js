@@ -1,8 +1,11 @@
 import express from "express";
-import { getServices, createService, updateService, deleteService } from "../controllers/servicesController.js";
+import { getServices, getServicesWithCounts, createService, updateService, deleteService } from "../controllers/servicesController.js";
 import { verifyToken, verifyAdmin } from "../middleware/verifyToken.js";
 
 const router = express.Router();
+
+// GET /api/admin/services/with-counts — public: services with live queue counts
+router.get("/services/with-counts", getServicesWithCounts);
 
 // GET /api/admin/services — public: anyone can view configured services
 router.get("/services", getServices);

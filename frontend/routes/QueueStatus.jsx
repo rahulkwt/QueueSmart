@@ -1,68 +1,85 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const QueueStatus = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [queues, setQueues] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchQueueStatuses = async () => {
-    const stored = JSON.parse(localStorage.getItem("activeQueues") || "{}");
-    const entries = Object.entries(stored);
+    try {
+      // Get this user's queue entries
+      const myQueuesRes = await axios.get("http://localhost:3000/api/queue/my-queues", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const myEntries = myQueuesRes.data;
 
-    if (entries.length === 0) {
+      if (myEntries.length === 0) {
+        setQueues([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get all services so we can look up names by serviceId
+      const servicesRes = await axios.get("http://localhost:3000/api/admin/services", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const allServices = servicesRes.data;
+
+      const results = await Promise.all(
+        myEntries.map(async (entry) => {
+          const svc = allServices.find((s) => s.id === entry.serviceId);
+          const serviceName = svc ? svc.name : "Unknown Service";
+
+          try {
+            const queueRes = await axios.get(
+              `http://localhost:3000/api/admin/queue/${entry.serviceId}`,
+              { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            const queue = queueRes.data;
+            const position = queue.findIndex((e) => e.id === entry.id) + 1;
+            const estimatedWait = position > 0 ? position * 5 : 0;
+
+            let status = "Pending";
+            if (position === 1) status = "Almost Ready";
+            else if (position === 0) status = "Served";
+
+            return {
+              service: serviceName,
+              serviceId: entry.serviceId,
+              queueId: entry.id,
+              priority: entry.priority,
+              joinedAt: entry.date,
+              position: position > 0 ? position : null,
+              estimatedWait,
+              status,
+              peopleInQueue: queue.length,
+            };
+          } catch {
+            return {
+              service: serviceName,
+              serviceId: entry.serviceId,
+              queueId: entry.id,
+              priority: entry.priority,
+              joinedAt: entry.date,
+              position: null,
+              estimatedWait: null,
+              status: "Unknown",
+              peopleInQueue: null,
+            };
+          }
+        })
+      );
+
+      setQueues(results.filter((q) => q.status !== "Served"));
+      setLoading(false);
+    } catch {
       setQueues([]);
       setLoading(false);
-      return;
     }
-
-    const results = await Promise.all(
-      entries.map(async ([service, info]) => {
-        try {
-          const response = await axios.get(
-            `http://localhost:3000/api/services?service=${encodeURIComponent(service)}`
-          );
-          const active = response.data.filter((item) => item.isActive !== false);
-          const position = active.findIndex((item) => item.id === info.queueId) + 1;
-          const user = JSON.parse(localStorage.getItem("user") || "{}");
-          const waitRes = await axios.get(
-            `http://localhost:3000/api/queue/wait-time?position=${position}&isOpen=true`,
-            { headers: { Authorization: `Bearer ${user.token}` } }
-          );
-          const estimatedWait = waitRes.data.estimatedWaitMinutes ?? 0;
-
-          let status = "Waiting";
-          if (position === 1) status = "Almost Ready";
-          else if (position === 0) status = "Served";
-
-          return {
-            service,
-            queueId: info.queueId,
-            priority: info.priority,
-            joinedAt: info.joinedAt,
-            position: position > 0 ? position : null,
-            estimatedWait,
-            status,
-            peopleInQueue: active.length,
-          };
-        } catch {
-          return {
-            service,
-            queueId: info.queueId,
-            priority: info.priority,
-            joinedAt: info.joinedAt,
-            position: null,
-            estimatedWait: null,
-            status: "Unknown",
-            peopleInQueue: null,
-          };
-        }
-      })
-    );
-
-    setQueues(results);
-    setLoading(false);
   };
 
   useEffect(() => {

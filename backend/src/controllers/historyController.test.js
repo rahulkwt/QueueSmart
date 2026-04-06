@@ -1,8 +1,18 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { getHistory, getHistoryByUser, addHistory, deleteHistory } from "./historyController.js";
-import * as store from "../mock/historyData.js";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 
-// Helper: creates a mock Express res object
+vi.mock("fs", () => ({
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
+
+import { readFileSync, writeFileSync } from "fs";
+import { getHistory, getHistoryByUser, addHistory, updateHistoryEntry, deleteHistory } from "./historyController.js";
+
+const mockHistory = [
+  { id: 1, userId: "P-001", service: "Consultation", doctor: "Dr. A", date: "01-01-2026", notes: "", status: "Completed" },
+  { id: 2, userId: "P-002", service: "Lab Work", doctor: "Dr. B", date: "02-01-2026", notes: "", status: "Pending" },
+];
+
 const mockRes = () => {
   const res = {};
   res.status = (code) => { res.statusCode = code; return res; };
@@ -10,23 +20,27 @@ const mockRes = () => {
   return res;
 };
 
-// Reset in-memory store before each test
 beforeEach(() => {
-  store.historyData.length = 0;
-  store.historyData.push(
-    { id: 1, userId: "P-001", service: "Consultation", doctor: "Dr. A", date: "01-01-2026", notes: "", status: "Completed" },
-    { id: 2, userId: "P-002", service: "Lab Work", doctor: "Dr. B", date: "02-01-2026", notes: "", status: "Pending" }
-  );
-  store.idState.nextId = 3;
+  vi.clearAllMocks();
+  readFileSync.mockReturnValue(JSON.stringify(mockHistory));
+  writeFileSync.mockImplementation(() => {});
 });
 
 // --- getHistory ---
 describe("getHistory", () => {
-  it("returns all history records", () => {
-    const req = {};
+  it("returns only history records for the authenticated user", () => {
+    const req = { user: { id: "P-001" } };
     const res = mockRes();
     getHistory(req, res);
-    expect(res.body).toHaveLength(2);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].userId).toBe("P-001");
+  });
+
+  it("returns empty array when user has no history records", () => {
+    const req = { user: { id: "P-999" } };
+    const res = mockRes();
+    getHistory(req, res);
+    expect(res.body).toHaveLength(0);
   });
 });
 
@@ -73,7 +87,42 @@ describe("addHistory", () => {
     addHistory(req, res);
     expect(res.statusCode).toBe(201);
     expect(res.body.userId).toBe("P-003");
-    expect(store.historyData).toHaveLength(3);
+    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    expect(saved).toHaveLength(3);
+  });
+
+  it("uses req.user.id as userId when available", () => {
+    const { userId, ...bodyWithoutUserId } = validBody;
+    const req = { user: { id: "P-from-token" }, body: bodyWithoutUserId };
+    const res = mockRes();
+    addHistory(req, res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.userId).toBe("P-from-token");
+  });
+
+  it("creates a record without doctor field, defaulting to empty string", () => {
+    const { doctor, ...bodyWithoutDoctor } = validBody;
+    const req = { body: bodyWithoutDoctor };
+    const res = mockRes();
+    addHistory(req, res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.doctor).toBe("");
+  });
+
+  it("stores serviceId when provided", () => {
+    const req = { body: { ...validBody, serviceId: "svc-123" } };
+    const res = mockRes();
+    addHistory(req, res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.serviceId).toBe("svc-123");
+  });
+
+  it("creates a Pending record for active queue sessions", () => {
+    const req = { user: { id: "P-001" }, body: { service: "Emergency", serviceId: "svc-1", date: "03-01-2026", status: "Pending" } };
+    const res = mockRes();
+    addHistory(req, res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.status).toBe("Pending");
   });
 
   it("returns 400 when a required field is missing", () => {
@@ -125,6 +174,46 @@ describe("addHistory", () => {
   });
 });
 
+// --- updateHistoryEntry ---
+describe("updateHistoryEntry", () => {
+  it("updates the status of an owned entry", () => {
+    const req = { params: { id: "2" }, user: { id: "P-002" }, body: { status: "Completed" } };
+    const res = mockRes();
+    updateHistoryEntry(req, res);
+    expect(res.body.status).toBe("Completed");
+    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    expect(saved.find((e) => e.id === 2).status).toBe("Completed");
+  });
+
+  it("returns 403 when user does not own the entry", () => {
+    const req = { params: { id: "1" }, user: { id: "P-999" }, body: { status: "Cancelled" } };
+    const res = mockRes();
+    updateHistoryEntry(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("returns 404 when entry is not found", () => {
+    const req = { params: { id: "999" }, user: { id: "P-001" }, body: { status: "Cancelled" } };
+    const res = mockRes();
+    updateHistoryEntry(req, res);
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 400 when status is invalid", () => {
+    const req = { params: { id: "1" }, user: { id: "P-001" }, body: { status: "Unknown" } };
+    const res = mockRes();
+    updateHistoryEntry(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 when id is not a positive integer", () => {
+    const req = { params: { id: "0" }, user: { id: "P-001" }, body: { status: "Cancelled" } };
+    const res = mockRes();
+    updateHistoryEntry(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+});
+
 // --- deleteHistory ---
 describe("deleteHistory", () => {
   it("deletes an existing record by id", () => {
@@ -132,7 +221,8 @@ describe("deleteHistory", () => {
     const res = mockRes();
     deleteHistory(req, res);
     expect(res.body.deleted.id).toBe(1);
-    expect(store.historyData).toHaveLength(1);
+    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
+    expect(saved).toHaveLength(1);
   });
 
   it("returns 404 when record is not found", () => {

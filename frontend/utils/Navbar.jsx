@@ -1,21 +1,46 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const Navbar = () => {
+const Navbar = ({ isAdmin = false }) => {
   // user holds the session object { id, name, email, role, token } from AuthContext/localStorage
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(() => {
+    const stored = localStorage.getItem("notifications");
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const addNotification = (notification) => {
+    setNotifications((prev) => {
+      const updated = [notification, ...prev];
+      localStorage.setItem("notifications", JSON.stringify(updated));
+      return updated;
+    });
+    setUnreadCount((prev) => prev + 1);
+  };
 
   useEffect(() => {
-    const handler = (e) => {
+    const handleJoined = (e) => {
       const { service, priority } = e.detail;
-      setNotifications((prev) => [
-        { id: Date.now(), service, priority, time: new Date().toLocaleTimeString() },
-        ...prev,
-      ]);
+      addNotification({ id: Date.now(), type: "joined", service, priority, time: new Date().toLocaleTimeString() });
     };
-    window.addEventListener("queue-joined", handler);
-    return () => window.removeEventListener("queue-joined", handler);
+    const handleAlmostReady = (e) => {
+      const { service } = e.detail;
+      addNotification({ id: Date.now(), type: "almost-ready", service, time: new Date().toLocaleTimeString() });
+    };
+    const handleServed = (e) => {
+      const { service } = e.detail;
+      addNotification({ id: Date.now(), type: "served", service, time: new Date().toLocaleTimeString() });
+    };
+
+    window.addEventListener("queue-joined", handleJoined);
+    window.addEventListener("queue-almost-ready", handleAlmostReady);
+    window.addEventListener("queue-served", handleServed);
+    return () => {
+      window.removeEventListener("queue-joined", handleJoined);
+      window.removeEventListener("queue-almost-ready", handleAlmostReady);
+      window.removeEventListener("queue-served", handleServed);
+    };
   }, []);
 
   return (
@@ -44,22 +69,22 @@ const Navbar = () => {
         {/* Start Header Right */}
         <div className="header-right ms-auto">
           <div className="d-flex align-items-center">
-            <div className="dropdown nxl-h-item">
+            {!isAdmin && <div className="dropdown nxl-h-item">
               <a
                 className="nxl-head-link me-3 position-relative"
                 data-bs-toggle="dropdown"
                 href="#"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => { e.preventDefault(); setUnreadCount(0); }}
                 role="button"
                 data-bs-auto-close="outside"
               >
                 <i className="feather-bell"></i>
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span
                     className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
                     style={{ fontSize: "0.6rem" }}
                   >
-                    {notifications.length}
+                    {unreadCount}
                   </span>
                 )}
               </a>
@@ -77,10 +102,12 @@ const Navbar = () => {
                       <div key={n.id} className="notifications-item">
                         <div className="notifications-desc">
                           <span className="fw-semibold text-dark d-block">
-                            Joined {n.service} Queue
+                            {n.type === "joined" && `Joined ${n.service} Queue`}
+                            {n.type === "almost-ready" && `Almost your turn — ${n.service}`}
+                            {n.type === "served" && `You've been served — ${n.service}`}
                           </span>
                           <span className="text-muted" style={{ fontSize: "0.8rem" }}>
-                            Priority: {n.priority} &middot; {n.time}
+                            {n.priority && `Priority: ${n.priority} · `}{n.time}
                           </span>
                         </div>
                       </div>
@@ -88,7 +115,7 @@ const Navbar = () => {
                     <div className="p-2 text-center border-top">
                       <button
                         className="btn btn-sm btn-outline-secondary"
-                        onClick={() => setNotifications([])}
+                        onClick={() => { setNotifications([]); localStorage.removeItem("notifications"); }}
                       >
                         Clear all
                       </button>
@@ -96,7 +123,7 @@ const Navbar = () => {
                   </>
                 )}
               </div>
-            </div>
+            </div>}
 
             <div className="dropdown nxl-h-item">
               <a

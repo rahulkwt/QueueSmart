@@ -99,7 +99,18 @@ const UserHistory = () => {
                       <span className="text-dark">{user.date}</span>
                     </td>
                     <td className="border-bottom-0">
-                      <span className="badge bg-soft-success text-success">{user.status}</span>
+                      <span
+                        style={{
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          padding: "0.2rem 0.6rem",
+                          borderRadius: "999px",
+                          background: user.status === "Completed" ? "#dcfce7" : user.status === "Cancelled" ? "#fee2e2" : "#fef3c7",
+                          color: user.status === "Completed" ? "#16a34a" : user.status === "Cancelled" ? "#dc2626" : "#92400e",
+                        }}
+                      >
+                        {user.status}
+                      </span>
                     </td>
                   </tr>
                   <tr>

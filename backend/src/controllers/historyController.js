@@ -1,92 +1,123 @@
-// SECOND, get as JSON
+import { readFileSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
-import * as store from "../mock/historyData.js";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const HISTORY_FILE = join(__dirname, "../data/history.json");
 
-const REQUIRED_FIELDS = ["userId", "service", "doctor", "date", "status"];
-const MAX_NOTES_LENGTH = 300;
+const VALID_STATUSES = ["Pending", "Completed", "Cancelled", "Aborted"];
 const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
 
+function readHistory() {
+  return JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
+}
 
-// GET /api/history
-// Returns history records for the logged-in user
+function writeHistory(history) {
+  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
+
 export const getHistory = (req, res) => {
-  const records = store.historyData.filter(r => r.userId === req.user.id);
-  res.json(records);
+  const userId = req.user.id;
+  const history = readHistory().filter((entry) => entry.userId === userId);
+  res.json(history);
 };
 
-
-// GET /api/history/:userID
-// Returns history records for specific user
 export const getHistoryByUser = (req, res) => {
   const { userId } = req.params;
-
-  if (!userId || typeof userId !== "string" || userId.trim() === ""){
-    return res.status(400).json({ error: "userId param is required" });
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required." });
   }
-
-  const records = store.historyData.filter(r => r.userId === userId.trim());
-  res.json(records);
+  res.json(readHistory().filter((entry) => entry.userId === userId));
 };
 
-
-// POST api/history/
-// Adds a new history record
 export const addHistory = (req, res) => {
-  const { userId, service, doctor, date, notes, status } = req.body;
+  const userId = req.user?.id || req.body.userId;
+  const { service, serviceId, date, notes, status } = req.body;
+  const doctor = req.body.doctor || "";
 
-  // Required field check
-  for (const field of REQUIRED_FIELDS){
-    if (!req.body[field] || String(req.body[field]).trim() === ""){
-      return res.status(400).json({ error: `${field} is required` });
-    }
+  if (!userId || !service || !date || !status) {
+    const missing = ["userId", "service", "date", "status"].find((f) => {
+      if (f === "userId") return !userId;
+      return !req.body[f];
+    });
+    return res.status(400).json({ error: `${missing} is required.` });
   }
-  //Type checks
-  if (typeof service !== "string" || service.trim().length > 100) {
-    return res.status(400).json({ error: "service must be a string under 100 characters" });
+
+  if (service.length > 100) {
+    return res.status(400).json({ error: "service exceeds max length of 100." });
   }
-  if (typeof doctor !== "string" || doctor.trim().length > 100) {
-    return res.status(400).json({ error: "doctor must be a string under 100 characters" });
+
+  if (doctor.length > 100) {
+    return res.status(400).json({ error: "doctor exceeds max length of 100." });
   }
+
   if (!DATE_REGEX.test(date)) {
-    return res.status(400).json({ error: "date must be in MM-DD-YYYY format" });
-  }
-  if (notes && notes.length > MAX_NOTES_LENGTH) {
-    return res.status(400).json({ error: `notes cannot exceed ${MAX_NOTES_LENGTH} characters` });
-  }
-  if (!["Completed", "Cancelled", "Pending"].includes(status)) {
-    return res.status(400).json({ error: "status must be Completed, Cancelled, or Pending" });
+    return res.status(400).json({ error: "date must be in MM-DD-YYYY format." });
   }
 
-  const newRecord = {
-    id: store.idState.nextId++,
-    userId: userId.trim(),
-    service: service.trim(),
-    doctor: doctor.trim(),
-    date: date.trim(),
-    notes: notes ? notes.trim() : "",
-    status
-  };
+  if (!VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
+  }
 
-  store.historyData.push(newRecord);
-  res.status(201).json(newRecord);
+  if (notes && notes.length > 300) {
+    return res.status(400).json({ error: "notes exceeds max length of 300." });
+  }
+
+  const history = readHistory();
+  const maxId = history.reduce((max, e) => Math.max(max, e.id), 0);
+  const newEntry = { id: maxId + 1, userId, service, doctor, date, notes: notes || "", status };
+  if (serviceId) newEntry.serviceId = serviceId;
+  history.push(newEntry);
+  writeHistory(history);
+  res.status(201).json(newEntry);
 };
 
+export const updateHistoryEntry = (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  const { status } = req.body;
 
-// DELETE /api/history/:id
-// Removed a history record by ID
+  if (isNaN(numId) || !Number.isInteger(numId) || numId <= 0) {
+    return res.status(400).json({ error: "id must be a positive integer." });
+  }
+
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
+  }
+
+  const history = readHistory();
+  const index = history.findIndex((entry) => entry.id === numId);
+  if (index === -1) {
+    return res.status(404).json({ error: `Record with id ${id} not found.` });
+  }
+
+  if (history[index].userId !== req.user.id) {
+    return res.status(403).json({ error: "Forbidden." });
+  }
+
+  history[index].status = status;
+  writeHistory(history);
+  res.json(history[index]);
+};
+
 export const deleteHistory = (req, res) => {
-  const id = parseInt(req.params.id);
+  const { id } = req.params;
+  const numId = Number(id);
 
-  if (isNaN(id) || id <= 0){
-    return res.status(400).json({ error: "id must be a positive integer" });
+  if (isNaN(numId) || !Number.isInteger(numId)) {
+    return res.status(400).json({ error: "id must be a valid integer." });
+  }
+  if (numId <= 0) {
+    return res.status(400).json({ error: "id must be a positive integer." });
   }
 
-  const index = store.historyData.findIndex(r => r.id === id);
-
-  if (index === -1){
-    return res.status(404).json({ error: `No history record found with id ${id}` });
+  const history = readHistory();
+  const index = history.findIndex((entry) => entry.id === numId);
+  if (index === -1) {
+    return res.status(404).json({ error: `Record with id ${id} not found.` });
   }
 
-  const deleted = store.historyData.splice(index, 1)[0];
-  res.json({ message: "Record deleted", deleted });
+  const [deleted] = history.splice(index, 1);
+  writeHistory(history);
+  res.json({ deleted });
 };

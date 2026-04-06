@@ -40,5 +40,4 @@ export let historyData = [];
 //   }
 // ];
 
-// Wrapped in an object so it can be mutated across module imports
-export const idState = { nextId: 5 };
+export const idState = { nextId: 3 };

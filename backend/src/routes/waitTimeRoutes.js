@@ -1,10 +1,8 @@
-import express from "express";
+import { Router } from "express";
 import { getWaitTime } from "../controllers/waitTimeController.js";
-import { verifyToken } from "../middleware/verifyToken.js";
 
-const router = express.Router();
+const router = Router();
 
-// GET /api/queue/wait-time?position=N&avgDuration=M&isOpen=true
-router.get("/queue/wait-time", verifyToken, getWaitTime);
+router.get("/queue/wait-time", getWaitTime);
 
 export default router;

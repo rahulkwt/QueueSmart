@@ -15,7 +15,16 @@
     "username": "erickks",
     "password": "qazwsx",
     "role": "user",
-    "token": "c5a9cf9e-14e4-430c-a101-7c05e50da828"
+    "token": "27498748-91a2-45fe-8f2d-34ca12b20e2c"
+  },
+  {
+    "id": "d7e2f3a4-8b9c-4d5e-af12-3456789abcde",
+    "name": "Mia",
+    "email": "asdfghjklll@gmail.com",
+    "username": "mia",
+    "password": "qazwsx",
+    "role": "user",
+    "token": "c5a81471-fe04-4978-ae8a-d6333f89eae2"
   },
   {
     "id": "a3f1c2d4-5e6b-7890-abcd-ef1234567890",
