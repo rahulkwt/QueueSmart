@@ -1,20 +1,15 @@
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const USERS_FILE = join(__dirname, "../data/users.json");
+import pool from "../db.js";
 
 /**
  * Express middleware that validates a Bearer token from the Authorization header.
- * Attaches the matching user object to req.user so downstream handlers can use it.
+ * Queries the database to find the matching user and attaches it to req.user.
  * Returns 401 if the header is missing, malformed, or the token doesn't match any user.
  *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
  */
-export function verifyToken(req, res, next) {
+export async function verifyToken(req, res, next) {
   const authHeader = req.headers["authorization"];
 
   // Expect format: "Bearer <token>" — anything else is rejected
@@ -24,17 +19,31 @@ export function verifyToken(req, res, next) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Look up the token in users.json — tokens are regenerated on each login
-  const users = JSON.parse(readFileSync(USERS_FILE, "utf-8"));
-  const user = users.find((u) => u.token === token);
+  try {
+    const result = await pool.query(
+      "SELECT * FROM users WHERE user_token = $1",
+      [token]
+    );
 
-  if (!user) {
-    return res.status(401).json({ message: "Unauthorized" });
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    req.user = {
+      id: user.user_id,
+      name: user.user_full_name,
+      email: user.user_email,
+      role: user.user_role,
+      token: user.user_token,
+    };
+
+    next();
+  } catch (err) {
+    console.error("Token verification error:", err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  // Attach the user so controllers can access req.user without re-reading the file
-  req.user = user;
-  next();
 }
 
 /**
