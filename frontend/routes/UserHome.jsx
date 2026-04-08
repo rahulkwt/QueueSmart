@@ -50,7 +50,17 @@ const UserHome = () => {
               `http://localhost:3000/api/admin/queue/${svc.id}`,
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
-            return { id: svc.id, wait: res.data.length * 5 };
+            const queueLen = res.data.length;
+            try {
+              const waitRes = await fetch(
+                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=5`
+              );
+              const waitData = await waitRes.json();
+              const lastEntry = waitData.queue[waitData.queue.length - 1];
+              return { id: svc.id, wait: lastEntry ? lastEntry.estimatedWaitMinutes : 0 };
+            } catch {
+              return { id: svc.id, wait: queueLen * 5 };
+            }
           } catch {
             return { id: svc.id, wait: 0 };
           }
