@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { computeEffectiveQueue } from "./waitTimeController.js";
 
-// Mock fs so getWaitTime reads from a virtual queue file instead of disk
-vi.mock("fs", () => ({
-  readFileSync: vi.fn(() => JSON.stringify([])),
-  writeFileSync: vi.fn(),
+// Mock the DB pool so getWaitTime never touches a real database
+vi.mock("../db.js", () => ({
+  default: { query: vi.fn() },
 }));
 
-import { readFileSync } from "fs";
+import pool from "../db.js";
 import { getWaitTime } from "./waitTimeController.js";
 
 const mockRes = () => {
@@ -121,142 +120,169 @@ describe("computeEffectiveQueue", () => {
 // ─── getWaitTime endpoint ────────────────────────────────────────────
 
 describe("getWaitTime", () => {
-  const SERVICE = "service-1";
+  const SERVICE = "1";
 
-  function setQueue(entries) {
-    readFileSync.mockReturnValue(JSON.stringify(entries));
+  // Accepts DB-shaped rows: { entry_id, queue_priority, user_full_name }
+  function setQueue(rows) {
+    pool.query.mockResolvedValue({ rows });
   }
 
   beforeEach(() => {
-    readFileSync.mockReset();
+    vi.clearAllMocks();
     setQueue([]);
   });
 
-  it("returns wait times for all entries in a service queue", () => {
+  it("returns wait times for all entries in a service queue", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "B", priority: "Low" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "low", user_full_name: "B" },
     ]);
     const req = { params: { serviceId: SERVICE }, query: {} };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.body.queue).toHaveLength(2);
-    expect(res.body.queue[0]).toMatchObject({ entryId: "e1", position: 0, estimatedWaitMinutes: 0 });
-    expect(res.body.queue[1]).toMatchObject({ entryId: "e2", position: 1, estimatedWaitMinutes: 10 });
+    expect(res.body.queue[0]).toMatchObject({ entryId: "1", position: 0, estimatedWaitMinutes: 0 });
+    expect(res.body.queue[1]).toMatchObject({ entryId: "2", position: 1, estimatedWaitMinutes: 10 });
   });
 
-  it("uses custom avgDuration", () => {
+  it("uses custom avgDuration", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "B", priority: "Low" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "low", user_full_name: "B" },
     ]);
     const req = { params: { serviceId: SERVICE }, query: { avgDuration: "5" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.body.avgDuration).toBe(5);
     expect(res.body.queue[1].estimatedWaitMinutes).toBe(5);
   });
 
-  it("returns single entry when entryId is provided", () => {
+  it("returns single entry when entryId is provided", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "B", priority: "Low" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "low", user_full_name: "B" },
     ]);
-    const req = { params: { serviceId: SERVICE }, query: { entryId: "e2" } };
+    const req = { params: { serviceId: SERVICE }, query: { entryId: "2" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
-    expect(res.body.entryId).toBe("e2");
+    expect(res.body.entryId).toBe("2");
     expect(res.body.position).toBe(1);
     expect(res.body.estimatedWaitMinutes).toBe(10);
   });
 
-  it("reflects priority skip in wait time", () => {
+  it("reflects priority skip in wait time", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "B", priority: "Low" },
-      { id: "e3", serviceId: SERVICE, name: "C", priority: "High" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "low", user_full_name: "B" },
+      { entry_id: 3, queue_priority: "high", user_full_name: "C" },
     ]);
-    const req = { params: { serviceId: SERVICE }, query: { entryId: "e3", avgDuration: "10" } };
+    const req = { params: { serviceId: SERVICE }, query: { entryId: "3", avgDuration: "10" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     // High skips 2 Low → effective position 0
     expect(res.body.position).toBe(0);
     expect(res.body.estimatedWaitMinutes).toBe(0);
   });
 
-  it("filters to only the requested service", () => {
+  it("maps mid priority to Medium for skip logic", async () => {
     setQueue([
-      { id: "e1", serviceId: "other", name: "X", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "A", priority: "Low" },
+      { entry_id: 1, queue_priority: "mid", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "mid", user_full_name: "B" },
+      { entry_id: 3, queue_priority: "high", user_full_name: "C" },
+    ]);
+    const req = { params: { serviceId: SERVICE }, query: { entryId: "3", avgDuration: "10" } };
+    const res = mockRes();
+    await getWaitTime(req, res);
+
+    // High skips 2 Medium → effective position 0
+    expect(res.body.position).toBe(0);
+    expect(res.body.estimatedWaitMinutes).toBe(0);
+  });
+
+  it("filters to only the requested service", async () => {
+    // Pool is already scoped to serviceId by the SQL WHERE clause;
+    // mock returns only the relevant rows
+    setQueue([
+      { entry_id: 2, queue_priority: "low", user_full_name: "A" },
     ]);
     const req = { params: { serviceId: SERVICE }, query: {} };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.body.queue).toHaveLength(1);
-    expect(res.body.queue[0].entryId).toBe("e2");
+    expect(res.body.queue[0].entryId).toBe("2");
   });
 
-  it("returns 404 when entryId is not found", () => {
+  it("returns 404 when entryId is not found", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
     ]);
     const req = { params: { serviceId: SERVICE }, query: { entryId: "missing" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.statusCode).toBe(404);
     expect(res.body.error).toContain("not found");
   });
 
-  it("returns 400 when avgDuration is zero", () => {
+  it("returns 400 when avgDuration is zero", async () => {
     const req = { params: { serviceId: SERVICE }, query: { avgDuration: "0" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toContain("avgDuration");
   });
 
-  it("returns 400 when avgDuration is negative", () => {
+  it("returns 400 when avgDuration is negative", async () => {
     const req = { params: { serviceId: SERVICE }, query: { avgDuration: "-5" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns 400 when avgDuration is not a number", () => {
+  it("returns 400 when avgDuration is not a number", async () => {
     const req = { params: { serviceId: SERVICE }, query: { avgDuration: "abc" } };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.statusCode).toBe(400);
   });
 
-  it("defaults avgDuration to 10", () => {
+  it("defaults avgDuration to 10", async () => {
     setQueue([
-      { id: "e1", serviceId: SERVICE, name: "A", priority: "Low" },
-      { id: "e2", serviceId: SERVICE, name: "B", priority: "Low" },
+      { entry_id: 1, queue_priority: "low", user_full_name: "A" },
+      { entry_id: 2, queue_priority: "low", user_full_name: "B" },
     ]);
     const req = { params: { serviceId: SERVICE }, query: {} };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.body.avgDuration).toBe(10);
     expect(res.body.queue[1].estimatedWaitMinutes).toBe(10);
   });
 
-  it("returns empty queue for unknown serviceId", () => {
+  it("returns empty queue for unknown serviceId", async () => {
     setQueue([]);
     const req = { params: { serviceId: "nonexistent" }, query: {} };
     const res = mockRes();
-    getWaitTime(req, res);
+    await getWaitTime(req, res);
 
     expect(res.body.queue).toEqual([]);
+  });
+
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB connection lost"));
+    const req = { params: { serviceId: SERVICE }, query: {} };
+    const res = mockRes();
+    await getWaitTime(req, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toContain("Internal server error");
   });
 });

@@ -1,9 +1,7 @@
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import pool from "../db.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const QUEUE_FILE = join(__dirname, "../data/queue.json");
+// Maps DB priority values (lowercase) to the format computeEffectiveQueue expects
+const PRIORITY_MAP = { low: "Low", mid: "Medium", high: "High" };
 
 /**
  * Builds the effective queue order by letting High-priority entries
@@ -40,13 +38,13 @@ export function computeEffectiveQueue(queue) {
  * GET /api/queue/:serviceId/wait-time?avgDuration=10&entryId=xxx
  *
  * Computes estimated wait times for a service's queue, factoring in
- * priority-based reordering (High skips up to 2 Low entries).
+ * priority-based reordering (High skips up to 2 Low/Medium entries).
  *
  * Query params:
  *   avgDuration - average service duration in minutes (default 10)
  *   entryId     - optional; if provided, returns only that entry's wait time
  */
-export function getWaitTime(req, res) {
+export async function getWaitTime(req, res) {
   const { serviceId } = req.params;
   const { avgDuration, entryId } = req.query;
 
@@ -58,31 +56,48 @@ export function getWaitTime(req, res) {
     }
   }
 
-  const allEntries = JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
-  const serviceQueue = allEntries.filter((e) => e.serviceId === serviceId);
+  try {
+    const result = await pool.query(
+      `SELECT e.entry_id, e.queue_priority, u.user_full_name
+       FROM queue_entry e
+       JOIN users u ON u.user_id = e.user_id
+       WHERE e.service_id = $1 AND e.queue_entry_status = 'pending'
+       ORDER BY e.queue_entry_position ASC`,
+      [serviceId]
+    );
 
-  const effectiveQueue = computeEffectiveQueue(serviceQueue);
+    const serviceQueue = result.rows.map((row) => ({
+      id: String(row.entry_id),
+      name: row.user_full_name,
+      priority: PRIORITY_MAP[row.queue_priority] || row.queue_priority,
+    }));
 
-  if (entryId) {
-    const position = effectiveQueue.findIndex((e) => e.id === entryId);
-    if (position === -1) {
-      return res.status(404).json({ error: "Entry not found in this service's queue." });
+    const effectiveQueue = computeEffectiveQueue(serviceQueue);
+
+    if (entryId) {
+      const position = effectiveQueue.findIndex((e) => e.id === entryId);
+      if (position === -1) {
+        return res.status(404).json({ error: "Entry not found in this service's queue." });
+      }
+      return res.json({
+        entryId,
+        position,
+        estimatedWaitMinutes: position * duration,
+        avgDuration: duration,
+      });
     }
-    return res.json({
-      entryId,
+
+    const waitTimes = effectiveQueue.map((entry, position) => ({
+      entryId: entry.id,
+      name: entry.name,
+      priority: entry.priority,
       position,
       estimatedWaitMinutes: position * duration,
-      avgDuration: duration,
-    });
+    }));
+
+    return res.json({ serviceId, avgDuration: duration, queue: waitTimes });
+  } catch (err) {
+    console.error("getWaitTime error:", err);
+    return res.status(500).json({ error: "Internal server error." });
   }
-
-  const waitTimes = effectiveQueue.map((entry, position) => ({
-    entryId: entry.id,
-    name: entry.name,
-    priority: entry.priority,
-    position,
-    estimatedWaitMinutes: position * duration,
-  }));
-
-  return res.json({ serviceId, avgDuration: duration, queue: waitTimes });
 }
