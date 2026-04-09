@@ -38,8 +38,11 @@ export async function getQueue(req, res) {
  */
 export async function serveNext(req, res) {
   const { serviceId } = req.params;
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `UPDATE queue_entry
        SET queue_entry_status = 'completed'
        WHERE entry_id = (
@@ -52,18 +55,40 @@ export async function serveNext(req, res) {
          ORDER BY qe.queue_entry_position
          LIMIT 1
        )
-       RETURNING entry_id AS id, queue_entry_position AS position`,
+       RETURNING entry_id AS id, queue_entry_position AS position, queue_id`,
       [serviceId]
     );
 
     if (result.rowCount === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "Queue is empty for this service." });
     }
 
-    return res.status(200).json(result.rows[0]);
+    const { queue_id: queueId } = result.rows[0];
+
+    // Renumber remaining pending entries so positions stay contiguous (1, 2, 3, ...)
+    await client.query(
+      `UPDATE queue_entry
+       SET queue_entry_position = sub.new_pos
+       FROM (
+         SELECT entry_id,
+                ROW_NUMBER() OVER (ORDER BY queue_entry_position) AS new_pos
+         FROM queue_entry
+         WHERE queue_id = $1
+           AND queue_entry_status = 'pending'
+       ) sub
+       WHERE queue_entry.entry_id = sub.entry_id`,
+      [queueId]
+    );
+
+    await client.query("COMMIT");
+    return res.status(200).json({ id: result.rows[0].id, position: result.rows[0].position });
   } catch (err) {
+    try { await client.query("ROLLBACK"); } catch (_) { /* ignore */ }
     console.error(err);
     return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
 }
 
@@ -75,27 +100,53 @@ export async function serveNext(req, res) {
  */
 export async function removeFromQueue(req, res) {
   const { serviceId, entryId } = req.params;
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
-    `UPDATE queue_entry
-     SET queue_entry_status = 'cancelled'
-     FROM queue q
-     WHERE queue_entry.queue_id = q.queue_id
-       AND queue_entry.entry_id = $1
-       AND q.service_id = $2
-       AND q.is_deleted = FALSE
-       AND queue_entry.queue_entry_status = 'pending'`,
-    [entryId, serviceId]
-  );
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `UPDATE queue_entry
+       SET queue_entry_status = 'cancelled'
+       FROM queue q
+       WHERE queue_entry.queue_id = q.queue_id
+         AND queue_entry.entry_id = $1
+         AND q.service_id = $2
+         AND q.is_deleted = FALSE
+         AND queue_entry.queue_entry_status = 'pending'
+       RETURNING queue_entry.queue_id`,
+      [entryId, serviceId]
+    );
 
     if (result.rowCount === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "Entry not found in queue." });
     }
 
+    const { queue_id: queueId } = result.rows[0];
+
+    // Renumber remaining pending entries so positions stay contiguous (1, 2, 3, ...)
+    await client.query(
+      `UPDATE queue_entry
+       SET queue_entry_position = sub.new_pos
+       FROM (
+         SELECT entry_id,
+                ROW_NUMBER() OVER (ORDER BY queue_entry_position) AS new_pos
+         FROM queue_entry
+         WHERE queue_id = $1
+           AND queue_entry_status = 'pending'
+       ) sub
+       WHERE queue_entry.entry_id = sub.entry_id`,
+      [queueId]
+    );
+
+    await client.query("COMMIT");
     return res.status(200).json({ message: "Removed from queue." });
   } catch (err) {
+    try { await client.query("ROLLBACK"); } catch (_) { /* ignore */ }
     console.error(err);
     return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
 }
 
