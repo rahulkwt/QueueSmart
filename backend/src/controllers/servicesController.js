@@ -1,81 +1,72 @@
-import { readFileSync, writeFileSync } from "fs";
-import { randomUUID } from "crypto";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVICES_FILE = join(__dirname, "../data/services.json");
-const QUEUE_FILE = join(__dirname, "../data/queue.json");
+import pool from "../db.js";
 
 /**
- * Reads and parses the services JSON file from disk.
- * @returns {Array} Array of service objects.
+ * Returns all active services from the database.
  */
-function readServices() {
-  return JSON.parse(readFileSync(SERVICES_FILE, "utf-8"));
+export async function getServices(req, res) {
+  try {
+    const result = await pool.query(
+      "SELECT service_id, service_name, service_description FROM services WHERE service_is_deleted = false"
+    );
+    const services = result.rows.map((row) => ({
+      id: row.service_id,
+      name: row.service_name,
+      description: row.service_description,
+    }));
+    return res.status(200).json(services);
+  } catch (err) {
+    console.error("getServices error:", err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
 }
 
 /**
- * Serializes and writes the services array back to disk.
- * @param {Array} services - The updated array of service objects to persist.
+ * Returns all active services each enriched with its current queue count.
  */
-function writeServices(services) {
-  writeFileSync(SERVICES_FILE, JSON.stringify(services, null, 2));
+export async function getServicesWithCounts(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT s.service_id, s.service_name, s.service_description,
+              COUNT(e.entry_id) FILTER (WHERE e.queue_entry_status = 'pending') AS queue_count
+       FROM services s
+       LEFT JOIN queue_entry e ON e.service_id = s.service_id
+       WHERE s.service_is_deleted = false
+       GROUP BY s.service_id`
+    );
+    const services = result.rows.map((row) => ({
+      id: row.service_id,
+      name: row.service_name,
+      description: row.service_description,
+      queueCount: parseInt(row.queue_count),
+    }));
+    return res.status(200).json(services);
+  } catch (err) {
+    console.error("getServicesWithCounts error:", err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
 }
 
-/**
- * Returns all configured services.
- * @param {import('express').Request} req
- * @param {import('express').Response} res - 200 with services array.
- */
-export function getServices(req, res) {
-  return res.status(200).json(readServices());
-}
-
-/**
- * Returns all configured services, each enriched with its current queue count.
- * @param {import('express').Request} req
- * @param {import('express').Response} res - 200 with array of { id, name, description, queueCount }.
- */
-export function getServicesWithCounts(req, res) {
-  const services = readServices();
-  const queue = JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
-
-  const result = services.map((svc) => ({
-    ...svc,
-    queueCount: queue.filter((entry) => entry.serviceId === svc.id).length,
-  }));
-
-  return res.status(200).json(result);
-}
-
-/**
- * Creates a new service.
- * Validates required fields then persists the new service with a generated UUID.
- * @param {import('express').Request} req - Body: { name, description, duration }
- * @param {import('express').Response} res - 201 with the created service on success, 400 if fields missing.
- */
-export function createService(req, res) {
+export async function createService(req, res) {
   const { name, description } = req.body;
 
   if (!name || !description) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
-  const services = readServices();
-  const newService = { id: randomUUID(), name, description };
-  services.push(newService);
-  writeServices(services);
-
-  return res.status(201).json(newService);
+  try {
+    const result = await pool.query(
+      "INSERT INTO services (service_name, service_description, service_duration, service_is_deleted) VALUES ($1, $2, 0, false) RETURNING *",
+      [name, description]
+    );
+    const row = result.rows[0];
+    return res.status(201).json({ id: row.service_id, name: row.service_name, description: row.service_description });
+  } catch (err) {
+    console.error("createService error:", err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
 }
 
-/**
- * Updates an existing service by ID.
- * @param {import('express').Request} req - Params: { id }. Body: { name, description, duration }
- * @param {import('express').Response} res - 200 with updated service, 400 if fields missing, 404 if not found.
- */
-export function updateService(req, res) {
+export async function updateService(req, res) {
   const { id } = req.params;
   const { name, description } = req.body;
 
@@ -83,35 +74,32 @@ export function updateService(req, res) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
-  const services = readServices();
-  const index = services.findIndex((s) => s.id === id);
-
-  if (index === -1) {
-    return res.status(404).json({ message: "Service not found." });
+  try {
+    const result = await pool.query(
+      "UPDATE services SET service_name = $1, service_description = $2 WHERE service_id = $3 RETURNING *",
+      [name, description, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Service not found." });
+    const row = result.rows[0];
+    return res.status(200).json({ id: row.service_id, name: row.service_name, description: row.service_description });
+  } catch (err) {
+    console.error("updateService error:", err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  services[index] = { id, name, description };
-  writeServices(services);
-
-  return res.status(200).json(services[index]);
 }
 
-/**
- * Deletes an existing service by ID.
- * @param {import('express').Request} req - Params: { id }
- * @param {import('express').Response} res - 200 on success, 404 if not found.
- */
-export function deleteService(req, res) {
+export async function deleteService(req, res) {
   const { id } = req.params;
-  const services = readServices();
-  const index = services.findIndex((s) => s.id === id);
 
-  if (index === -1) {
-    return res.status(404).json({ message: "Service not found." });
+  try {
+    const result = await pool.query(
+      "UPDATE services SET service_is_deleted = true WHERE service_id = $1 RETURNING service_id",
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Service not found." });
+    return res.status(200).json({ message: "Service deleted." });
+  } catch (err) {
+    console.error("deleteService error:", err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  services.splice(index, 1);
-  writeServices(services);
-
-  return res.status(200).json({ message: "Service deleted." });
 }

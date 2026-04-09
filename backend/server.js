@@ -25,10 +25,7 @@ app.use("/api", userQueueRoutes); // mount user-facing queue routes: /api/queue/
 
 app.use("/api/admin", servicesRoute);
 app.use("/api/admin", queueRoutes);
-// run another terminal process
-// cd into ./backend
-// run "node server.js"
-// data is now able to be fetched
+
 const PORT = 3000;
 
 const server = app.listen(PORT, () => {
