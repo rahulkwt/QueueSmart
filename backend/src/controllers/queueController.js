@@ -1,205 +1,339 @@
-import { readFileSync, writeFileSync } from "fs";
-import { randomUUID } from "crypto";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const QUEUE_FILE = join(__dirname, "../data/queue.json");
-const HISTORY_FILE = join(__dirname, "../data/history.json");
+import pool from "../db.js";
 
 /**
- * Finds the most recent Pending history entry for a given user+service and
- * updates its status. Used by admin serve/remove actions to keep history accurate.
+ * Returns pending entries for a service's active queue, ordered by position.
+ * Joins users to expose the person's name for display.
+ * @param {import('express').Request} req - Params: { serviceId }
+ * @param {import('express').Response} res - 200 with array of pending entries.
  */
-function resolvePendingHistory(userId, serviceId, outcome) {
+export async function getQueue(req, res) {
+  const { serviceId } = req.params;
   try {
-    const history = JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
-    const index = history.findIndex(
-      (e) => e.userId === userId && e.serviceId === serviceId && e.status === "Pending"
+    const result = await pool.query(
+      `SELECT qe.entry_id             AS id,
+              u.user_full_name         AS name,
+              qe.queue_entry_position  AS position,
+              qe.queue_priority        AS priority,
+              qe.queue_join_time       AS "joinTime"
+       FROM queue_entry qe
+       JOIN queue  q ON q.queue_id  = qe.queue_id
+       JOIN users  u ON u.user_id   = qe.user_id
+       WHERE q.service_id = $1
+         AND q.is_deleted = FALSE
+         AND qe.queue_entry_status = 'pending'
+       ORDER BY qe.queue_entry_position`,
+      [serviceId]
     );
-    if (index !== -1) {
-      history[index].status = outcome;
-      writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+/**
+ * Marks the lowest-position pending entry for a service as 'completed'.
+ * @param {import('express').Request} req - Params: { serviceId }
+ * @param {import('express').Response} res - 200 with served entry, 404 if queue is empty.
+ */
+export async function serveNext(req, res) {
+  const { serviceId } = req.params;
+  try {
+    const result = await pool.query(
+    `UPDATE queue_entry
+     SET queue_entry_status = 'completed'
+     WHERE entry_id = (
+       SELECT qe.entry_id
+       FROM queue_entry qe
+       JOIN queue q ON q.queue_id = qe.queue_id
+       WHERE q.service_id = $1
+         AND q.is_deleted = FALSE
+         AND qe.queue_entry_status = 'pending'
+       ORDER BY qe.queue_entry_position
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
+     )
+     RETURNING entry_id AS id, queue_entry_position AS position
+     UPDATE queue_entry
+      SET queue_entry_position = sub.new_pos
+      FROM (
+        SELECT entry_id,
+              ROW_NUMBER() OVER (ORDER BY queue_entry_position) AS new_pos
+        FROM queue_entry qe
+        JOIN queue q ON q.queue_id = qe.queue_id
+        WHERE q.service_id = $1
+          AND qe.queue_entry_status = 'pending'
+      ) sub
+      WHERE queue_entry.entry_id = sub.entry_id;`,
+    [serviceId]
+  );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Queue is empty for this service." });
     }
-  } catch { /* non-critical — history update should not fail a queue operation */ }
-}
 
-/**
- * Reads and parses the queue JSON file from disk.
- * @returns {Array} Full array of all queue entries across all services.
- */
-function readQueue() {
-  return JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
-}
-
-/**
- * Serializes and writes the full queue array back to disk.
- * @param {Array} queue - The updated full queue to persist.
- */
-function writeQueue(queue) {
-  writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2));
-}
-
-/**
- * Returns the queue for a specific service, in order.
- * @param {import('express').Request} req - Params: { serviceId }
- * @param {import('express').Response} res - 200 with the service's queue array.
- */
-export function getQueue(req, res) {
-  const { serviceId } = req.params;
-  const queue = readQueue().filter((entry) => entry.serviceId === serviceId);
-  return res.status(200).json(queue);
-}
-
-/**
- * Serves the next user in a service's queue: removes the first entry for that service.
- * @param {import('express').Request} req - Params: { serviceId }
- * @param {import('express').Response} res - 200 with the served entry, 404 if queue is empty.
- */
-export function serveNext(req, res) {
-  const { serviceId } = req.params;
-  const all = readQueue();
-
-  const firstIndex = all.findIndex((entry) => entry.serviceId === serviceId);
-  if (firstIndex === -1) {
-    return res.status(404).json({ message: "Queue is empty for this service." });
+    return res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  const [served] = all.splice(firstIndex, 1);
-  writeQueue(all);
-  resolvePendingHistory(served.userId, served.serviceId, "Completed");
-
-  return res.status(200).json(served);
 }
 
 /**
- * Removes a specific entry from a service's queue by entry ID.
+ * Marks a specific pending entry as 'cancelled' (admin remove).
+ * Verifies the entry belongs to the given service via the queue join.
  * @param {import('express').Request} req - Params: { serviceId, entryId }
  * @param {import('express').Response} res - 200 on success, 404 if not found.
  */
-export function removeFromQueue(req, res) {
+export async function removeFromQueue(req, res) {
   const { serviceId, entryId } = req.params;
-  const all = readQueue();
-
-  const index = all.findIndex(
-    (entry) => entry.id === entryId && entry.serviceId === serviceId
+  try {
+    const result = await pool.query(
+    `UPDATE queue_entry
+     SET queue_entry_status = 'cancelled'
+     FROM queue q
+     WHERE queue_entry.queue_id = q.queue_id
+       AND queue_entry.entry_id = $1
+       AND q.service_id = $2
+       AND q.is_deleted = FALSE
+       AND queue_entry.queue_entry_status = 'pending'`,
+    [entryId, serviceId]
   );
 
-  if (index === -1) {
-    return res.status(404).json({ message: "Entry not found in queue." });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Entry not found in queue." });
+    }
+
+    return res.status(200).json({ message: "Removed from queue." });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  const removed = all[index];
-  all.splice(index, 1);
-  writeQueue(all);
-  resolvePendingHistory(removed.userId, removed.serviceId, "Cancelled");
-
-  return res.status(200).json({ message: "Removed from queue." });
 }
 
 /**
- * Moves an entry one position toward the front within its service's queue.
+ * Swaps a pending entry's position with the one directly ahead of it.
+ * Runs inside a transaction to keep positions consistent.
  * @param {import('express').Request} req - Params: { serviceId, entryId }
- * @param {import('express').Response} res - 200 with updated service queue, 400 if already at front, 404 if not found.
+ * @param {import('express').Response} res - 200 with updated queue, 400 if at front, 404 if not found.
  */
-export function moveUp(req, res) {
+export async function moveUp(req, res) {
   const { serviceId, entryId } = req.params;
-  const all = readQueue();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  // Collect indices of entries belonging to this service
-  const serviceIndices = all.reduce((acc, entry, i) => {
-    if (entry.serviceId === serviceId) acc.push(i);
-    return acc;
-  }, []);
+    // Verify the target entry exists and is pending for this service
+    const currentResult = await client.query(
+      `SELECT qe.entry_id, qe.queue_entry_position, qe.queue_id
+       FROM queue_entry qe
+       JOIN queue q ON q.queue_id = qe.queue_id
+       WHERE qe.entry_id = $1
+         AND q.service_id = $2
+         AND q.is_deleted = FALSE
+         AND qe.queue_entry_status = 'pending'`,
+      [entryId, serviceId]
+    );
 
-  const posInService = serviceIndices.findIndex(
-    (i) => all[i].id === entryId
-  );
+    if (currentResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Entry not found in queue." });
+    }
 
-  if (posInService === -1) {
-    return res.status(404).json({ message: "Entry not found in queue." });
+    const { queue_entry_position: currentPos, queue_id: queueId } = currentResult.rows[0];
+
+    // Find the nearest pending entry with a lower position in the same queue
+    const prevResult = await client.query(
+      `SELECT entry_id, queue_entry_position
+       FROM queue_entry
+       WHERE queue_id = $1
+         AND queue_entry_status = 'pending'
+         AND queue_entry_position < $2
+       ORDER BY queue_entry_position DESC
+       LIMIT 1`,
+      [queueId, currentPos]
+    );
+
+    if (prevResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Entry is already at the front." });
+    }
+
+    const { entry_id: prevEntryId, queue_entry_position: prevPos } = prevResult.rows[0];
+
+    // Swap the two positions
+    // Swap the two positions atomically to avoid constraint violations
+    await client.query(
+      `-- step 1
+       UPDATE queue_entry SET queue_entry_position = -1 WHERE entry_id = $1;
+       -- step 2
+       UPDATE queue_entry SET queue_entry_position = $currentPos WHERE entry_id = $prevEntryId;
+       -- step 3
+       UPDATE queue_entry SET queue_entry_position = $prevPos WHERE entry_id = $1;`,
+      [entryId, prevPos, prevEntryId, currentPos]
+    );
+
+    await client.query("COMMIT");
+
+    // Return the updated queue for this service
+    const updated = await pool.query(
+      `SELECT qe.entry_id             AS id,
+              u.user_full_name         AS name,
+              qe.queue_entry_position  AS position,
+              qe.queue_priority        AS priority,
+              qe.queue_join_time       AS "joinTime"
+       FROM queue_entry qe
+       JOIN queue  q ON q.queue_id = qe.queue_id
+       JOIN users  u ON u.user_id  = qe.user_id
+       WHERE q.service_id = $1
+         AND q.is_deleted = FALSE
+         AND qe.queue_entry_status = 'pending'
+       ORDER BY qe.queue_entry_position`,
+      [serviceId]
+    );
+
+    return res.status(200).json(updated.rows);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
-
-  if (posInService === 0) {
-    return res.status(400).json({ message: "Entry is already at the front." });
-  }
-
-  // Swap with the previous entry in this service's slice of the global array
-  const idxA = serviceIndices[posInService - 1];
-  const idxB = serviceIndices[posInService];
-  [all[idxA], all[idxB]] = [all[idxB], all[idxA]];
-  writeQueue(all);
-
-  return res.status(200).json(all.filter((e) => e.serviceId === serviceId));
 }
 
 /**
- * Adds the authenticated user to a service's queue.
+ * Adds the authenticated user to a service's active queue.
+ * Rejects if the user already has a pending entry for this service.
  * @param {import('express').Request} req - Params: { serviceId }. Body: { priority }
- * @param {import('express').Response} res - 201 with the new entry, 400 if already in queue.
+ * @param {import('express').Response} res - 201 with new entry, 400 if already in queue, 404 if no active queue.
  */
-export function joinQueue(req, res) {
+export async function joinQueue(req, res) {
   const { serviceId } = req.params;
-  const { priority } = req.body;
+  const { priority = "low" } = req.body;
   const userId = req.user.id;
-  const name = req.user.name || req.user.username;
 
-  const all = readQueue();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  const existing = all.find((e) => e.serviceId === serviceId && e.userId === userId);
-  if (existing) {
-    return res.status(400).json({ message: "Already in this queue." });
+    // Find the active queue for this service
+    const queueResult = await client.query(
+      `SELECT queue_id FROM queue
+       WHERE service_id = $1 AND is_deleted = FALSE
+       ORDER BY service_creation_date
+       LIMIT 1`,
+      [serviceId]
+    );
+
+    if (queueResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "No active queue for this service." });
+    }
+
+    const queueId = queueResult.rows[0].queue_id;
+
+    // Reject if already pending in this queue
+    const dupCheck = await client.query(
+      `SELECT 1 FROM queue_entry
+       WHERE queue_id = $1 AND user_id = $2 AND queue_entry_status = 'pending'`,
+      [queueId, userId]
+    );
+
+    if (dupCheck.rowCount > 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Already in this queue." });
+    }
+
+    // Determine the next position
+    const posResult = await client.query(
+      `SELECT COALESCE(MAX(queue_entry_position), 0) + 1 AS next_pos
+       FROM queue_entry
+       WHERE queue_id = $1 AND queue_entry_status = 'pending'`,
+      [queueId]
+    );
+    const nextPos = posResult.rows[0].next_pos;
+
+    const validPriority = ["low", "mid", "high"].includes(priority) ? priority : "low";
+
+    const insertResult = await client.query(
+      `INSERT INTO queue_entry (queue_id, user_id, queue_entry_status, queue_entry_position, queue_priority)
+       VALUES ($1, $2, 'pending', $3, $4)
+       RETURNING entry_id AS id, queue_entry_position AS position, queue_priority AS priority, queue_join_time AS "joinTime"`,
+      [queueId, userId, nextPos, validPriority]
+    );
+
+    await client.query("COMMIT");
+    return res.status(201).json(insertResult.rows[0]);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
-
-  const entry = {
-    id: randomUUID(),
-    serviceId,
-    userId,
-    name,
-    priority: priority || "Low",
-    date: new Date().toISOString(),
-    status: "Waiting",
-  };
-
-  all.push(entry);
-  writeQueue(all);
-
-  return res.status(201).json(entry);
 }
 
 /**
- * Removes the authenticated user's entry from a service's queue.
+ * Cancels the authenticated user's pending entry in a service's queue.
+ * Verifies ownership — only the entry's owner can leave.
  * @param {import('express').Request} req - Params: { serviceId, entryId }
- * @param {import('express').Response} res - 200 on success, 404 if not found.
+ * @param {import('express').Response} res - 200 on success, 404 if not found or not owned.
  */
-export function leaveQueue(req, res) {
+export async function leaveQueue(req, res) {
   const { serviceId, entryId } = req.params;
   const userId = req.user.id;
+  try {
+    const result = await pool.query(
+      `UPDATE queue_entry qe
+       SET queue_entry_status = 'cancelled'
+       FROM queue q
+       WHERE qe.queue_id = q.queue_id
+         AND qe.entry_id = $1
+         AND q.service_id = $2
+         AND qe.user_id = $3
+         AND qe.queue_entry_status = 'pending'`,
+      [entryId, serviceId, userId]
+    );
 
-  const all = readQueue();
-  const index = all.findIndex(
-    (e) => e.id === entryId && e.serviceId === serviceId && e.userId === userId
-  );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Entry not found." });
+    }
 
-  if (index === -1) {
-    return res.status(404).json({ message: "Entry not found." });
+    return res.status(200).json({ message: "Left queue." });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
   }
-
-  const left = all[index];
-  all.splice(index, 1);
-  writeQueue(all);
-  resolvePendingHistory(left.userId, left.serviceId, "Cancelled");
-
-  return res.status(200).json({ message: "Left queue." });
 }
 
 /**
- * Returns all queue entries belonging to the authenticated user.
+ * Returns all pending queue entries belonging to the authenticated user.
  * @param {import('express').Request} req
- * @param {import('express').Response} res - 200 with array of user's queue entries.
+ * @param {import('express').Response} res - 200 with array of the user's pending entries.
  */
-export function getMyQueues(req, res) {
+export async function getMyQueues(req, res) {
   const userId = req.user.id;
-  const entries = readQueue().filter((e) => e.userId === userId);
-  return res.status(200).json(entries);
+  try {
+    const result = await pool.query(
+      `SELECT qe.entry_id            AS id,
+              q.service_id           AS "serviceId",
+              s.service_name         AS "serviceName",
+              qe.queue_entry_position AS position,
+              qe.queue_priority       AS priority,
+              qe.queue_join_time      AS "joinTime"
+       FROM queue_entry qe
+       JOIN queue    q ON q.queue_id    = qe.queue_id
+       JOIN services s ON s.service_id  = q.service_id
+       WHERE qe.user_id = $1
+         AND qe.queue_entry_status = 'pending'
+         AND q.is_deleted = FALSE
+       ORDER BY qe.queue_join_time`,
+      [userId]
+    );
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
 }

@@ -28,7 +28,7 @@ const QueueManagement = () => {
       .then((data) => {
         setServices(data);
         if (data.length > 0) {
-          setSelectedService(data[0].id);
+          setSelectedService(Number(data[0].id));
         }
       });
   }, []);
@@ -48,18 +48,25 @@ const QueueManagement = () => {
       method: "POST",
       headers: { Authorization: `Bearer ${user.token}` },
     })
-      .then((res) => res.json())
-      .then(() => fetchQueue(selectedService));
+      .then((res) => {
+        if (res.ok) {
+           // Optimistically remove the first person from the UI
+           // setQueue(prev => prev.slice(1));
+        }
+      });
   };
 
-  // Remove a specific entry from the selected service's queue
   const removeUser = (entryId) => {
     fetch(`${QUEUES_PATH}/${selectedService}/${entryId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${user.token}` },
     })
-      .then((res) => res.json())
-      .then(() => fetchQueue(selectedService));
+      .then((res) => {
+        if (res.ok) {
+          // Optimistically remove the user from the UI
+          setQueue(prev => prev.filter(item => item.id !== entryId));
+        }
+      });
   };
 
   // Move an entry one position toward the front within the selected service's queue
@@ -68,8 +75,13 @@ const QueueManagement = () => {
       method: "PUT",
       headers: { Authorization: `Bearer ${user.token}` },
     })
-      .then((res) => res.json())
-      .then(() => fetchQueue(selectedService));
+      .then((res) => {
+        if (!res.ok) throw new Error("Swap failed");
+        return res.json();
+      })
+      // Use the updated rows returned by the backend immediately
+      .then((updatedQueue) => setQueue(updatedQueue))
+      .catch((err) => console.error(err));
   };
 
   return (
@@ -106,7 +118,7 @@ const QueueManagement = () => {
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 <span>
-                  #{index + 1} - {entry.name}
+                  #{entry.position} - {entry.name}
                 </span>
 
                 <div>
