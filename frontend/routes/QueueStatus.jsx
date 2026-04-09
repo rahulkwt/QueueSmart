@@ -41,7 +41,14 @@ const QueueStatus = () => {
             );
             const queue = queueRes.data;
             const position = queue.findIndex((e) => e.id === entry.id) + 1;
-            const estimatedWait = position > 0 ? position * 5 : 0;
+            let estimatedWait = position > 0 ? position * 5 : 0;
+            try {
+              const waitRes = await fetch(
+                `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=5`
+              );
+              const waitData = await waitRes.json();
+              estimatedWait = waitData.estimatedWaitMinutes;
+            } catch { /* fall back to position * 5 */ }
 
             let status = "Pending";
             if (position === 1) status = "Almost Ready";

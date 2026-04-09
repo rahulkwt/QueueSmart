@@ -3,6 +3,6 @@ import { getWaitTime } from "../controllers/waitTimeController.js";
 
 const router = Router();
 
-router.get("/queue/wait-time", getWaitTime);
+router.get("/queue/:serviceId/wait-time", getWaitTime);
 
 export default router;
