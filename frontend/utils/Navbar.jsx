@@ -1,36 +1,70 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
 const Navbar = ({ isAdmin = false }) => {
-  // user holds the session object { id, name, email, role, token } from AuthContext/localStorage
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState(() => {
-    const stored = localStorage.getItem("notifications");
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const addNotification = (notification) => {
-    setNotifications((prev) => {
-      const updated = [notification, ...prev];
-      localStorage.setItem("notifications", JSON.stringify(updated));
-      return updated;
-    });
-    setUnreadCount((prev) => prev + 1);
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/user/notifications", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setNotifications(res.data);
+      setUnreadCount(res.data.filter((n) => n.notif_status === "unread").length);
+    } catch (err) { console.error("fetchNotifications error:", err); }
   };
+
+  const saveNotification = async (message) => {
+    try {
+      await axios.post(
+        "http://localhost:3000/api/user/notifications",
+        { message },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      fetchNotifications();
+    } catch (err) { console.error("saveNotification error:", err); }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await axios.patch(
+        "http://localhost:3000/api/user/notifications/read-all",
+        {},
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setUnreadCount(0);
+    } catch (err) { console.error("markAllRead error:", err); }
+  };
+
+  const clearAll = async () => {
+    try {
+      await axios.delete("http://localhost:3000/api/user/notifications", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) { console.error("clearAll error:", err); }
+  };
+
+  useEffect(() => {
+    if (!isAdmin) fetchNotifications();
+  }, []);
 
   useEffect(() => {
     const handleJoined = (e) => {
       const { service, priority } = e.detail;
-      addNotification({ id: Date.now(), type: "joined", service, priority, time: new Date().toLocaleTimeString() });
+      saveNotification(`Joined ${service} Queue — Priority: ${priority}`);
     };
     const handleAlmostReady = (e) => {
       const { service } = e.detail;
-      addNotification({ id: Date.now(), type: "almost-ready", service, time: new Date().toLocaleTimeString() });
+      saveNotification(`Almost your turn — ${service}`);
     };
     const handleServed = (e) => {
       const { service } = e.detail;
-      addNotification({ id: Date.now(), type: "served", service, time: new Date().toLocaleTimeString() });
+      saveNotification(`You've been served — ${service}`);
     };
 
     window.addEventListener("queue-joined", handleJoined);
@@ -74,7 +108,7 @@ const Navbar = ({ isAdmin = false }) => {
                 className="nxl-head-link me-3 position-relative"
                 data-bs-toggle="dropdown"
                 href="#"
-                onClick={(e) => { e.preventDefault(); setUnreadCount(0); }}
+                onClick={(e) => { e.preventDefault(); markAllRead(); }}
                 role="button"
                 data-bs-auto-close="outside"
               >
@@ -89,39 +123,39 @@ const Navbar = ({ isAdmin = false }) => {
                 )}
               </a>
 
-              <div className="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu">
-                {notifications.length === 0 ? (
-                  <div className="notifications-item">
-                    <div className="notifications-desc">
-                      <span className="text-muted">No notifications</span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {notifications.map((n) => (
-                      <div key={n.id} className="notifications-item">
-                        <div className="notifications-desc">
-                          <span className="fw-semibold text-dark d-block">
-                            {n.type === "joined" && `Joined ${n.service} Queue`}
-                            {n.type === "almost-ready" && `Almost your turn — ${n.service}`}
-                            {n.type === "served" && `You've been served — ${n.service}`}
-                          </span>
-                          <span className="text-muted" style={{ fontSize: "0.8rem" }}>
-                            {n.priority && `Priority: ${n.priority} · `}{n.time}
-                          </span>
-                        </div>
+              <div className="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu" style={{ maxHeight: "350px" }}>
+                <div style={{ display: "flex", flexDirection: "column", maxHeight: "350px" }}>
+                  {notifications.length === 0 ? (
+                    <div className="notifications-item">
+                      <div className="notifications-desc">
+                        <span className="text-muted">No notifications</span>
                       </div>
-                    ))}
-                    <div className="p-2 text-center border-top">
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => { setNotifications([]); localStorage.removeItem("notifications"); }}
-                      >
-                        Clear all
-                      </button>
                     </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div style={{ overflowY: "auto", flex: 1 }}>
+                        {notifications.map((n) => (
+                          <div key={n.notif_id} className="notifications-item">
+                            <div className="notifications-desc">
+                              <span className="fw-semibold text-dark d-block">{n.notif_message}</span>
+                              <span className="text-muted" style={{ fontSize: "0.8rem" }}>
+                                {new Date(n.notif_time).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="p-2 text-center border-top" style={{ flexShrink: 0 }}>
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={clearAll}
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>}
 
