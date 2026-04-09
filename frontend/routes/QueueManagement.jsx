@@ -50,8 +50,7 @@ const QueueManagement = () => {
     })
       .then((res) => {
         if (res.ok) {
-           // Optimistically remove the first person from the UI
-           // setQueue(prev => prev.slice(1));
+          fetchQueue(selectedService);
         }
       });
   };

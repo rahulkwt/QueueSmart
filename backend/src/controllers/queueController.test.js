@@ -172,7 +172,8 @@ describe("moveUp", () => {
       { rows: [], rowCount: 0 },                                                       // BEGIN
       { rows: [{ entry_id: 4, queue_entry_position: 4, queue_id: 1 }], rowCount: 1 }, // current entry
       { rows: [{ entry_id: 3, queue_entry_position: 3 }],              rowCount: 1 }, // prev entry
-      { rows: [], rowCount: 2 },                                                       // UPDATE current → prevPos
+      { rows: [], rowCount: 1 },                                                       // UPDATE entry4 → prevPos
+      { rows: [], rowCount: 1 },                                                       // UPDATE entry3 → currentPos
       { rows: [], rowCount: 0 },                                                       // COMMIT
     );
     pool.query.mockResolvedValue({

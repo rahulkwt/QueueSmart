@@ -40,33 +40,21 @@ export async function serveNext(req, res) {
   const { serviceId } = req.params;
   try {
     const result = await pool.query(
-    `UPDATE queue_entry
-     SET queue_entry_status = 'completed'
-     WHERE entry_id = (
-       SELECT qe.entry_id
-       FROM queue_entry qe
-       JOIN queue q ON q.queue_id = qe.queue_id
-       WHERE q.service_id = $1
-         AND q.is_deleted = FALSE
-         AND qe.queue_entry_status = 'pending'
-       ORDER BY qe.queue_entry_position
-       LIMIT 1
-       FOR UPDATE SKIP LOCKED
-     )
-     RETURNING entry_id AS id, queue_entry_position AS position
-     UPDATE queue_entry
-      SET queue_entry_position = sub.new_pos
-      FROM (
-        SELECT entry_id,
-              ROW_NUMBER() OVER (ORDER BY queue_entry_position) AS new_pos
-        FROM queue_entry qe
-        JOIN queue q ON q.queue_id = qe.queue_id
-        WHERE q.service_id = $1
-          AND qe.queue_entry_status = 'pending'
-      ) sub
-      WHERE queue_entry.entry_id = sub.entry_id;`,
-    [serviceId]
-  );
+      `UPDATE queue_entry
+       SET queue_entry_status = 'completed'
+       WHERE entry_id = (
+         SELECT qe.entry_id
+         FROM queue_entry qe
+         JOIN queue q ON q.queue_id = qe.queue_id
+         WHERE q.service_id = $1
+           AND q.is_deleted = FALSE
+           AND qe.queue_entry_status = 'pending'
+         ORDER BY qe.queue_entry_position
+         LIMIT 1
+       )
+       RETURNING entry_id AS id, queue_entry_position AS position`,
+      [serviceId]
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Queue is empty for this service." });
@@ -161,16 +149,14 @@ export async function moveUp(req, res) {
 
     const { entry_id: prevEntryId, queue_entry_position: prevPos } = prevResult.rows[0];
 
-    // Swap the two positions
-    // Swap the two positions atomically to avoid constraint violations
+    // Swap the two positions inside the open transaction
     await client.query(
-      `-- step 1
-       UPDATE queue_entry SET queue_entry_position = -1 WHERE entry_id = $1;
-       -- step 2
-       UPDATE queue_entry SET queue_entry_position = $currentPos WHERE entry_id = $prevEntryId;
-       -- step 3
-       UPDATE queue_entry SET queue_entry_position = $prevPos WHERE entry_id = $1;`,
-      [entryId, prevPos, prevEntryId, currentPos]
+      `UPDATE queue_entry SET queue_entry_position = $1 WHERE entry_id = $2`,
+      [prevPos, entryId]
+    );
+    await client.query(
+      `UPDATE queue_entry SET queue_entry_position = $1 WHERE entry_id = $2`,
+      [currentPos, prevEntryId]
     );
 
     await client.query("COMMIT");
@@ -194,7 +180,7 @@ export async function moveUp(req, res) {
 
     return res.status(200).json(updated.rows);
   } catch (err) {
-    await client.query("ROLLBACK");
+    try { await client.query("ROLLBACK"); } catch (_) { /* ignore rollback errors */ }
     console.error(err);
     return res.status(500).json({ message: "Internal server error." });
   } finally {
@@ -266,7 +252,7 @@ export async function joinQueue(req, res) {
     await client.query("COMMIT");
     return res.status(201).json(insertResult.rows[0]);
   } catch (err) {
-    await client.query("ROLLBACK");
+    try { await client.query("ROLLBACK"); } catch (_) { /* ignore rollback errors */ }
     console.error(err);
     return res.status(500).json({ message: "Internal server error." });
   } finally {

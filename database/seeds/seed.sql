@@ -40,24 +40,23 @@ INSERT INTO queue (queue_name, service_id, estimated_time, is_deleted) VALUES
 -- QUEUE ENTRIES
 -- Mix of pending, completed, and cancelled across different queues
 -- ---------------------------------------------------------------
-INSERT INTO queue_entry (queue_id, service_id, queue_entry_status, queue_entry_position, queue_priority) VALUES
+INSERT INTO queue_entry (queue_id, user_id, queue_entry_status, queue_entry_position, queue_priority) VALUES
   -- Haircut Queue A (queue_id=1, service_id=1)
-  (1, 1, 'completed', 1, 'high'),
-  (1, 1, 'completed', 2, 'mid'),
-  (1, 1, 'pending',   3, 'low'),
-  (1, 1, 'pending',   4, 'low'),
+  (1, 3, 'completed', 1, 'high'),
+  (1, 4, 'completed', 2, 'mid'),
+  (1, 5, 'pending',   3, 'low'),
 
   -- Massage Queue (queue_id=2, service_id=2)
-  (2, 2, 'completed', 1, 'high'),
-  (2, 2, 'pending',   2, 'mid'),
-  (2, 2, 'cancelled', 3, 'low'),
+  (2, 5, 'completed', 1, 'high'),
+  (2, 4, 'pending',   2, 'mid'),
+  (2, 3, 'cancelled', 3, 'low'),
 
   -- Consultation Queue (queue_id=3, service_id=3)
-  (3, 3, 'pending',   1, 'high'),
+  (3, 4, 'pending',   1, 'high'),
   (3, 3, 'pending',   2, 'mid'),
 
   -- Nail Care Queue (queue_id=4, service_id=4)
-  (4, 4, 'cancelled', 1, 'low');
+  (4, 5, 'cancelled', 1, 'low');
 
 -- ---------------------------------------------------------------
 -- NOTIFICATIONS
