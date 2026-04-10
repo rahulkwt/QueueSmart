@@ -1,23 +1,19 @@
 import pool from "../db.js";
 
-const VALID_STATUSES = ["Pending", "Completed", "Cancelled", "Aborted"];
-const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
+const VALID_STATUSES = ["n/a", "sent", "viewed"];
 
 /**
  * Maps a DB row from the history table to the API response shape.
  */
 function rowToEntry(row) {
-  const entry = {
+  return {
     id: row.history_id,
     userId: row.user_id,
-    service: row.history_service,
-    doctor: row.history_doctor,
-    date: row.history_date,
-    notes: row.history_notes,
+    serviceId: row.service_id,
+    message: row.history_message,
+    timestamp: row.history_time,
     status: row.history_status,
   };
-  if (row.service_id != null) entry.serviceId = row.service_id;
-  return entry;
 }
 
 /**
@@ -61,47 +57,34 @@ export const getHistoryByUser = async (req, res) => {
 
 /**
  * POST /api/history
- * Adds a new history record for the authenticated user.
+ * Adds a new history record.
  */
 export const addHistory = async (req, res) => {
   const userId = req.user?.id || req.body.userId;
-  const { service, serviceId, date, notes, status } = req.body;
-  const doctor = req.body.doctor || "";
+  const { serviceId, message, status } = req.body;
 
-  if (!userId || !service || !date || !status) {
-    const missing = ["userId", "service", "date", "status"].find((f) => {
+  if (!userId || !serviceId || !message || !status) {
+    const missing = ["userId", "serviceId", "message", "status"].find((f) => {
       if (f === "userId") return !userId;
       return !req.body[f];
     });
     return res.status(400).json({ error: `${missing} is required.` });
   }
 
-  if (service.length > 100) {
-    return res.status(400).json({ error: "service exceeds max length of 100." });
-  }
-
-  if (doctor.length > 100) {
-    return res.status(400).json({ error: "doctor exceeds max length of 100." });
-  }
-
-  if (!DATE_REGEX.test(date)) {
-    return res.status(400).json({ error: "date must be in MM-DD-YYYY format." });
+  if (message.length > 255) {
+    return res.status(400).json({ error: "message exceeds max length of 255." });
   }
 
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
   }
 
-  if (notes && notes.length > 300) {
-    return res.status(400).json({ error: "notes exceeds max length of 300." });
-  }
-
   try {
     const result = await pool.query(
-      `INSERT INTO history (user_id, service_id, history_service, history_doctor, history_date, history_notes, history_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO history (user_id, service_id, history_message, history_status)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [userId, serviceId || null, service, doctor, date, notes || "", status]
+      [userId, serviceId, message, status]
     );
     res.status(201).json(rowToEntry(result.rows[0]));
   } catch (err) {
