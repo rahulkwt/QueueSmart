@@ -82,7 +82,15 @@ const JoinQueue = () => {
         setPriority(myEntry.priority || "Low");
         const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
         setPosition(pos);
-        setEstimatedWait(pos * 1);
+        try {
+          const waitRes = await fetch(
+            `http://localhost:3000/api/queue/${svcId}/wait-time?entryId=${myEntry.id}&avgDuration=5`
+          );
+          const waitData = await waitRes.json();
+          setEstimatedWait(waitData.estimatedWaitMinutes);
+        } catch {
+          setEstimatedWait(pos * 5);
+        }
       } else if (joinedRef.current) {
         // User was served or removed by admin.
         // The backend already updated the Pending history entry (Completed or Cancelled).
