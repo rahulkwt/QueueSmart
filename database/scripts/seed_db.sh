@@ -6,7 +6,7 @@ export PATH="$PATH:/c/Program Files/PostgreSQL/18/bin"
 # Database connection parameters
 DB_NAME=queue_smart_db
 DB_USER=postgres
-DB_PASSWORD=admin123
+DB_PASSWORD=Admin123
 DB_HOST=localhost
 DB_PORT=5432
 
