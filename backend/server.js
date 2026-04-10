@@ -27,10 +27,7 @@ app.use("/api", waitTimeRoutes); // mount wait-time estimation: /api/queue/:serv
 
 app.use("/api/admin", servicesRoute);
 app.use("/api/admin", queueRoutes);
-// run another terminal process
-// cd into ./backend
-// run "node server.js"
-// data is now able to be fetched
+
 const PORT = 3000;
 
 const server = app.listen(PORT, () => {

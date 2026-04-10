@@ -25,6 +25,9 @@ const JoinQueue = () => {
   const [status, setStatus] = useState("Waiting");
   const [queueId, setQueueId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const almostReadyFiredRef = useRef(
+    localStorage.getItem(`almostReadyFired_${decodeURIComponent(service)}`) === "true"
+  );
 
   // Keep joinedRef in sync so the polling interval (which captures a stale closure) can
   // still detect when the user has been served or removed by an admin.
@@ -122,7 +125,11 @@ const JoinQueue = () => {
       setStatus("Waiting");
     } else if (position === 1) {
       setStatus("Almost Ready");
-      window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
+      if (!almostReadyFiredRef.current) {
+        almostReadyFiredRef.current = true;
+        localStorage.setItem(`almostReadyFired_${decodedService}`, "true");
+        window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
+      }
     } else {
       setStatus("Served");
       window.dispatchEvent(new CustomEvent("queue-served", { detail: { service: decodedService } }));
@@ -140,6 +147,8 @@ const JoinQueue = () => {
       );
       setQueueId(res.data.id);
       setJoined(true);
+      almostReadyFiredRef.current = false;
+      localStorage.removeItem(`almostReadyFired_${decodedService}`);
       window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
       // Create a Pending history entry so the visit appears in history while in queue.
       // The backend will update it to Completed (served) or Cancelled (removed/left).
