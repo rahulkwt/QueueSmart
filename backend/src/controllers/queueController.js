@@ -176,6 +176,7 @@ export async function leaveQueue(req, res) {
   const { serviceId, entryId } = req.params;
   const userId = req.user.id;
   try {
+    // OR:       "SELECT entry_id FROM queue_entry WHERE entry_id = $1 AND service_id = $2 AND user_id = $3 AND queue_entry_status = 'pending'",
     const result = await pool.query(
       `UPDATE queue_entry qe
        SET queue_entry_status = 'cancelled'
@@ -188,11 +189,6 @@ export async function leaveQueue(req, res) {
       [entryId, serviceId, userId]
     );
 
-  try {
-    const result = await pool.query(
-      "SELECT entry_id FROM queue_entry WHERE entry_id = $1 AND service_id = $2 AND user_id = $3 AND queue_entry_status = 'pending'",
-      [entryId, serviceId, userId]
-    );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Entry not found." });
     }
