@@ -1,16 +1,25 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-vi.mock("fs", () => ({
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
+// Mock the DB pool so no real database is touched
+vi.mock("../db.js", () => ({
+  default: { query: vi.fn() },
 }));
 
-import { readFileSync, writeFileSync } from "fs";
+import pool from "../db.js";
 import { getHistory, getHistoryByUser, addHistory, updateHistoryEntry, deleteHistory } from "./historyController.js";
 
-const mockHistory = [
-  { id: 1, userId: "P-001", service: "Consultation", doctor: "Dr. A", date: "01-01-2026", notes: "", status: "Completed" },
-  { id: 2, userId: "P-002", service: "Lab Work", doctor: "Dr. B", date: "02-01-2026", notes: "", status: "Pending" },
+// DB-shaped rows matching the history table schema
+const mockRows = [
+  {
+    history_id: 1, user_id: 1, service_id: 1,
+    history_message: "Completed general consultation.",
+    history_time: "2026-01-15T00:00:00Z", history_status: "n/a",
+  },
+  {
+    history_id: 2, user_id: 2, service_id: 2,
+    history_message: "Emergency care visit completed.",
+    history_time: "2026-02-01T00:00:00Z", history_status: "sent",
+  },
 ];
 
 const mockRes = () => {
@@ -22,228 +31,239 @@ const mockRes = () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  readFileSync.mockReturnValue(JSON.stringify(mockHistory));
-  writeFileSync.mockImplementation(() => {});
 });
 
 // --- getHistory ---
 describe("getHistory", () => {
-  it("returns only history records for the authenticated user", () => {
-    const req = { user: { id: "P-001" } };
+  it("returns only history records for the authenticated user", async () => {
+    pool.query.mockResolvedValue({ rows: [mockRows[0]] });
+    const req = { user: { id: 1 } };
     const res = mockRes();
-    getHistory(req, res);
+    await getHistory(req, res);
     expect(res.body).toHaveLength(1);
-    expect(res.body[0].userId).toBe("P-001");
+    expect(res.body[0].userId).toBe(1);
   });
 
-  it("returns empty array when user has no history records", () => {
-    const req = { user: { id: "P-999" } };
+  it("returns empty array when user has no history records", async () => {
+    pool.query.mockResolvedValue({ rows: [] });
+    const req = { user: { id: 999 } };
     const res = mockRes();
-    getHistory(req, res);
+    await getHistory(req, res);
     expect(res.body).toHaveLength(0);
+  });
+
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const req = { user: { id: 1 } };
+    const res = mockRes();
+    await getHistory(req, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
 // --- getHistoryByUser ---
 describe("getHistoryByUser", () => {
-  it("returns records for a valid userId", () => {
-    const req = { params: { userId: "P-001" } };
+  it("returns records for a valid userId", async () => {
+    pool.query.mockResolvedValue({ rows: [mockRows[0]] });
+    const req = { params: { userId: "1" } };
     const res = mockRes();
-    getHistoryByUser(req, res);
+    await getHistoryByUser(req, res);
     expect(res.body).toHaveLength(1);
-    expect(res.body[0].userId).toBe("P-001");
+    expect(res.body[0].userId).toBe(1);
   });
 
-  it("returns empty array when userId has no records", () => {
-    const req = { params: { userId: "P-999" } };
+  it("returns empty array when userId has no records", async () => {
+    pool.query.mockResolvedValue({ rows: [] });
+    const req = { params: { userId: "999" } };
     const res = mockRes();
-    getHistoryByUser(req, res);
+    await getHistoryByUser(req, res);
     expect(res.body).toHaveLength(0);
   });
 
-  it("returns 400 when userId is missing", () => {
+  it("returns 400 when userId is missing", async () => {
     const req = { params: { userId: "" } };
     const res = mockRes();
-    getHistoryByUser(req, res);
+    await getHistoryByUser(req, res);
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toBeDefined();
+  });
+
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const req = { params: { userId: "1" } };
+    const res = mockRes();
+    await getHistoryByUser(req, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
 // --- addHistory ---
 describe("addHistory", () => {
   const validBody = {
-    userId: "P-003",
-    service: "Emergency",
-    doctor: "Dr. C",
-    date: "03-01-2026",
-    notes: "All clear",
-    status: "Completed",
+    userId: 3,
+    serviceId: 1,
+    message: "General consultation completed.",
+    status: "n/a",
   };
 
-  it("creates a new record with valid input", () => {
+  const newRow = {
+    history_id: 3, user_id: 3, service_id: 1,
+    history_message: "General consultation completed.",
+    history_time: "2026-03-01T00:00:00Z", history_status: "n/a",
+  };
+
+  it("creates a new record with valid input", async () => {
+    pool.query.mockResolvedValue({ rows: [newRow] });
     const req = { body: { ...validBody } };
     const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(201);
-    expect(res.body.userId).toBe("P-003");
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
-    expect(saved).toHaveLength(3);
+    expect(res.body.userId).toBe(3);
+    expect(res.body.message).toBe("General consultation completed.");
   });
 
-  it("uses req.user.id as userId when available", () => {
+  it("uses req.user.id as userId when available", async () => {
+    pool.query.mockResolvedValue({ rows: [{ ...newRow, user_id: 99 }] });
     const { userId, ...bodyWithoutUserId } = validBody;
-    const req = { user: { id: "P-from-token" }, body: bodyWithoutUserId };
+    const req = { user: { id: 99 }, body: bodyWithoutUserId };
     const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(201);
-    expect(res.body.userId).toBe("P-from-token");
+    expect(pool.query.mock.calls[0][1][0]).toBe(99);
   });
 
-  it("creates a record without doctor field, defaulting to empty string", () => {
-    const { doctor, ...bodyWithoutDoctor } = validBody;
-    const req = { body: bodyWithoutDoctor };
+  it("returns 400 when a required field is missing", async () => {
+    const req = { body: { ...validBody, message: "" } };
     const res = mockRes();
-    addHistory(req, res);
-    expect(res.statusCode).toBe(201);
-    expect(res.body.doctor).toBe("");
-  });
-
-  it("stores serviceId when provided", () => {
-    const req = { body: { ...validBody, serviceId: "svc-123" } };
-    const res = mockRes();
-    addHistory(req, res);
-    expect(res.statusCode).toBe(201);
-    expect(res.body.serviceId).toBe("svc-123");
-  });
-
-  it("creates a Pending record for active queue sessions", () => {
-    const req = { user: { id: "P-001" }, body: { service: "Emergency", serviceId: "svc-1", date: "03-01-2026", status: "Pending" } };
-    const res = mockRes();
-    addHistory(req, res);
-    expect(res.statusCode).toBe(201);
-    expect(res.body.status).toBe("Pending");
-  });
-
-  it("returns 400 when a required field is missing", () => {
-    const req = { body: { ...validBody, service: "" } };
-    const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("service");
+    expect(res.body.error).toContain("message");
   });
 
-  it("returns 400 when date format is invalid", () => {
-    const req = { body: { ...validBody, date: "2026-01-01" } };
+  it("returns 400 when serviceId is missing", async () => {
+    const { serviceId, ...body } = validBody;
+    const req = { body };
     const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("MM-DD-YYYY");
+    expect(res.body.error).toContain("serviceId");
   });
 
-  it("returns 400 when status is not a valid value", () => {
+  it("returns 400 when status is not a valid value", async () => {
     const req = { body: { ...validBody, status: "Unknown" } };
     const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toContain("status");
   });
 
-  it("returns 400 when notes exceed max length", () => {
-    const req = { body: { ...validBody, notes: "x".repeat(301) } };
+  it("returns 400 when message exceeds 255 characters", async () => {
+    const req = { body: { ...validBody, message: "x".repeat(256) } };
     const res = mockRes();
-    addHistory(req, res);
+    await addHistory(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("notes");
+    expect(res.body.error).toContain("message");
   });
 
-  it("returns 400 when service exceeds 100 characters", () => {
-    const req = { body: { ...validBody, service: "s".repeat(101) } };
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const req = { body: { ...validBody } };
     const res = mockRes();
-    addHistory(req, res);
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("service");
-  });
-
-  it("returns 400 when doctor exceeds 100 characters", () => {
-    const req = { body: { ...validBody, doctor: "d".repeat(101) } };
-    const res = mockRes();
-    addHistory(req, res);
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("doctor");
+    await addHistory(req, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
 // --- updateHistoryEntry ---
 describe("updateHistoryEntry", () => {
-  it("updates the status of an owned entry", () => {
-    const req = { params: { id: "2" }, user: { id: "P-002" }, body: { status: "Completed" } };
+  it("updates the status of an owned entry", async () => {
+    const updatedRow = { ...mockRows[0], history_status: "viewed" };
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ user_id: 1 }] })   // ownership check
+      .mockResolvedValueOnce({ rows: [updatedRow] });        // update
+    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "viewed" } };
     const res = mockRes();
-    updateHistoryEntry(req, res);
-    expect(res.body.status).toBe("Completed");
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
-    expect(saved.find((e) => e.id === 2).status).toBe("Completed");
+    await updateHistoryEntry(req, res);
+    expect(res.body.status).toBe("viewed");
   });
 
-  it("returns 403 when user does not own the entry", () => {
-    const req = { params: { id: "1" }, user: { id: "P-999" }, body: { status: "Cancelled" } };
+  it("returns 403 when user does not own the entry", async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ user_id: 1 }] });
+    const req = { params: { id: "1" }, user: { id: 999 }, body: { status: "viewed" } };
     const res = mockRes();
-    updateHistoryEntry(req, res);
+    await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(403);
   });
 
-  it("returns 404 when entry is not found", () => {
-    const req = { params: { id: "999" }, user: { id: "P-001" }, body: { status: "Cancelled" } };
+  it("returns 404 when entry is not found", async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] });
+    const req = { params: { id: "999" }, user: { id: 1 }, body: { status: "viewed" } };
     const res = mockRes();
-    updateHistoryEntry(req, res);
+    await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(404);
   });
 
-  it("returns 400 when status is invalid", () => {
-    const req = { params: { id: "1" }, user: { id: "P-001" }, body: { status: "Unknown" } };
+  it("returns 400 when status is invalid", async () => {
+    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "Unknown" } };
     const res = mockRes();
-    updateHistoryEntry(req, res);
+    await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns 400 when id is not a positive integer", () => {
-    const req = { params: { id: "0" }, user: { id: "P-001" }, body: { status: "Cancelled" } };
+  it("returns 400 when id is not a positive integer", async () => {
+    const req = { params: { id: "0" }, user: { id: 1 }, body: { status: "viewed" } };
     const res = mockRes();
-    updateHistoryEntry(req, res);
+    await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "viewed" } };
+    const res = mockRes();
+    await updateHistoryEntry(req, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
 // --- deleteHistory ---
 describe("deleteHistory", () => {
-  it("deletes an existing record by id", () => {
+  it("deletes an existing record by id", async () => {
+    pool.query.mockResolvedValue({ rows: [mockRows[0]] });
     const req = { params: { id: "1" } };
     const res = mockRes();
-    deleteHistory(req, res);
+    await deleteHistory(req, res);
     expect(res.body.deleted.id).toBe(1);
-    const saved = JSON.parse(writeFileSync.mock.calls[0][1]);
-    expect(saved).toHaveLength(1);
   });
 
-  it("returns 404 when record is not found", () => {
+  it("returns 404 when record is not found", async () => {
+    pool.query.mockResolvedValue({ rows: [] });
     const req = { params: { id: "999" } };
     const res = mockRes();
-    deleteHistory(req, res);
+    await deleteHistory(req, res);
     expect(res.statusCode).toBe(404);
     expect(res.body.error).toContain("999");
   });
 
-  it("returns 400 when id is not a number", () => {
+  it("returns 400 when id is not a number", async () => {
     const req = { params: { id: "abc" } };
     const res = mockRes();
-    deleteHistory(req, res);
+    await deleteHistory(req, res);
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns 400 when id is zero or negative", () => {
+  it("returns 400 when id is zero or negative", async () => {
     const req = { params: { id: "0" } };
     const res = mockRes();
-    deleteHistory(req, res);
+    await deleteHistory(req, res);
     expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 500 when database query fails", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const req = { params: { id: "1" } };
+    const res = mockRes();
+    await deleteHistory(req, res);
+    expect(res.statusCode).toBe(500);
   });
 });

@@ -8,7 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+coverage
 dist
+.env
 dist-ssr
 *.local
 
@@ -22,4 +24,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.claude/worktrees/lucid-brahmagupta/
+
