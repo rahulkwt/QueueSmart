@@ -123,7 +123,7 @@ export async function moveUp(req, res) {
 
 export async function joinQueue(req, res) {
   const { serviceId } = req.params;
-  const { priority } = req.body;
+  const { priority = "low" } = req.body;
   const userId = req.user.id;
 
   try {
@@ -175,6 +175,18 @@ export async function joinQueue(req, res) {
 export async function leaveQueue(req, res) {
   const { serviceId, entryId } = req.params;
   const userId = req.user.id;
+  try {
+    const result = await pool.query(
+      `UPDATE queue_entry qe
+       SET queue_entry_status = 'cancelled'
+       FROM queue q
+       WHERE qe.queue_id = q.queue_id
+         AND qe.entry_id = $1
+         AND q.service_id = $2
+         AND qe.user_id = $3
+         AND qe.queue_entry_status = 'pending'`,
+      [entryId, serviceId, userId]
+    );
 
   try {
     const result = await pool.query(

@@ -5,7 +5,7 @@ import { verifyToken, verifyAdmin } from "../middleware/verifyToken.js";
 const router = express.Router();
 
 // GET /api/admin/queue/:serviceId — view the queue for a specific service
-router.get("/queue/:serviceId", getQueue);
+router.get("/queue/:serviceId", verifyToken, verifyAdmin, getQueue);
 
 // POST /api/admin/queue/:serviceId/serve — protected: serve the next user in a service's queue
 router.post("/queue/:serviceId/serve", verifyToken, verifyAdmin, serveNext);
