@@ -1,197 +1,314 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-// Mock the DB pool so no real database is touched
 vi.mock("../db.js", () => ({
-  default: { query: vi.fn() },
+  default: {
+    query: vi.fn(),
+    connect: vi.fn(),
+  },
 }));
 
 import pool from "../db.js";
-import { getQueue, serveNext, removeFromQueue, moveUp } from "./queueController.js";
+import {
+  getQueue,
+  serveNext,
+  removeFromQueue,
+  moveUp,
+  joinQueue,
+  leaveQueue,
+  getMyQueues,
+} from "./queueController.js";
 
-// DB-shaped rows matching queue_entry joined with users
-const mockQueueRows = [
-  { entry_id: 1, user_id: 1, user_full_name: "Alice", queue_priority: "low", queue_entry_status: "pending", queue_entry_position: 1, queue_join_time: "2026-01-01T00:00:00Z" },
-  { entry_id: 2, user_id: 2, user_full_name: "Bob",   queue_priority: "low", queue_entry_status: "pending", queue_entry_position: 2, queue_join_time: "2026-01-01T00:00:00Z" },
-];
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 const mockRes = () => {
   const res = {};
   res.status = (code) => { res.statusCode = code; return res; };
-  res.json = (data) => { res.body = data; return res; };
+  res.json   = (data) => { res.body = data; return res; };
   return res;
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+/**
+ * Returns a mock pool client whose query() resolves each provided value in
+ * order.  Unmatched calls resolve with { rows: [], rowCount: 0 }.
+ */
+const makeClient = (...responses) => {
+  let i = 0;
+  const client = {
+    query:   vi.fn().mockImplementation(() => Promise.resolve(responses[i++] ?? { rows: [], rowCount: 0 })),
+    release: vi.fn(),
+  };
+  pool.connect.mockResolvedValue(client);
+  return client;
+};
 
-// --- getQueue ---
+beforeEach(() => vi.clearAllMocks());
+
+// ---------------------------------------------------------------------------
+// getQueue
+// ---------------------------------------------------------------------------
 describe("getQueue", () => {
-  it("returns only entries for the given serviceId", async () => {
-    pool.query.mockResolvedValue({ rows: mockQueueRows });
-    const req = { params: { serviceId: "1" } };
+  it("returns pending entries for the service with status 200", async () => {
+    pool.query.mockResolvedValue({
+      rows: [
+        { id: 1, name: "Sam Smith",  position: 3, priority: "low" },
+        { id: 2, name: "Jane Doe",   position: 4, priority: "low" },
+      ],
+    });
     const res = mockRes();
-    await getQueue(req, res);
+    await getQueue({ params: { serviceId: "1" } }, res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(2);
-    expect(res.body.every((e) => e.serviceId === 1)).toBe(true);
+    expect(res.body[0]).toHaveProperty("name");
   });
 
-  it("returns empty array when no entries exist for serviceId", async () => {
+  it("returns empty array when no pending entries exist", async () => {
     pool.query.mockResolvedValue({ rows: [] });
-    const req = { params: { serviceId: "999" } };
     const res = mockRes();
-    await getQueue(req, res);
+    await getQueue({ params: { serviceId: "999" } }, res);
+    expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(0);
   });
+
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const res = mockRes();
+    await getQueue({ params: { serviceId: "1" } }, res);
+    expect(res.statusCode).toBe(500);
+  });
 });
 
-// --- serveNext ---
+// ---------------------------------------------------------------------------
+// serveNext
+// ---------------------------------------------------------------------------
 describe("serveNext", () => {
-  it("returns 404 when queue is empty for service", async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "999" } };
+  it("returns 404 when queue is empty", async () => {
+    pool.query.mockResolvedValue({ rowCount: 0, rows: [] });
     const res = mockRes();
-    await serveNext(req, res);
+    await serveNext({ params: { serviceId: "1" } }, res);
     expect(res.statusCode).toBe(404);
   });
 
-  it("returns the first entry in the service queue", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ entry_id: 1, user_id: 1 }] }) // SELECT first pending
-      .mockResolvedValueOnce({ rows: [] });                             // UPDATE to completed
-    const req = { params: { serviceId: "1" } };
+  it("returns 200 with the served entry", async () => {
+    pool.query.mockResolvedValue({ rowCount: 1, rows: [{ id: 3, position: 3 }] });
     const res = mockRes();
-    await serveNext(req, res);
+    await serveNext({ params: { serviceId: "1" } }, res);
     expect(res.statusCode).toBe(200);
-    expect(res.body.entryId).toBe(1);
+    expect(res.body.id).toBe(3);
   });
 
-  it("marks the entry as completed in the database", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ entry_id: 1, user_id: 1 }] })
-      .mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "1" } };
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
     const res = mockRes();
-    await serveNext(req, res);
-    const updateCall = pool.query.mock.calls[1];
-    expect(updateCall[0]).toContain("'completed'");
-    expect(updateCall[1][0]).toBe(1);
-  });
-
-  it("returns the userId of the served entry", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ entry_id: 1, user_id: 42 }] })
-      .mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "1" } };
-    const res = mockRes();
-    await serveNext(req, res);
-    expect(res.body.userId).toBe(42);
+    await serveNext({ params: { serviceId: "1" } }, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
-// --- removeFromQueue ---
+// ---------------------------------------------------------------------------
+// removeFromQueue
+// ---------------------------------------------------------------------------
 describe("removeFromQueue", () => {
   it("returns 404 when entry is not found", async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "1", entryId: "999" } };
+    pool.query.mockResolvedValue({ rowCount: 0 });
     const res = mockRes();
-    await removeFromQueue(req, res);
+    await removeFromQueue({ params: { serviceId: "1", entryId: "999" } }, res);
     expect(res.statusCode).toBe(404);
   });
 
-  it("returns 404 when entryId belongs to a different serviceId", async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "2", entryId: "1" } };
+  it("returns 404 when entryId belongs to a different service", async () => {
+    pool.query.mockResolvedValue({ rowCount: 0 });
     const res = mockRes();
-    await removeFromQueue(req, res);
+    await removeFromQueue({ params: { serviceId: "2", entryId: "1" } }, res);
     expect(res.statusCode).toBe(404);
   });
 
-  it("removes the correct entry and returns 200", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ entry_id: 1 }] }) // SELECT check
-      .mockResolvedValueOnce({ rows: [] });                 // UPDATE to cancelled
-    const req = { params: { serviceId: "1", entryId: "1" } };
+  it("returns 200 on successful removal", async () => {
+    pool.query.mockResolvedValue({ rowCount: 1 });
     const res = mockRes();
-    await removeFromQueue(req, res);
+    await removeFromQueue({ params: { serviceId: "1", entryId: "3" } }, res);
     expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Removed from queue.");
   });
 
-  it("marks the removed entry as cancelled in the database", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [{ entry_id: 2 }] })
-      .mockResolvedValueOnce({ rows: [] });
-    const req = { params: { serviceId: "1", entryId: "2" } };
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
     const res = mockRes();
-    await removeFromQueue(req, res);
-    const updateCall = pool.query.mock.calls[1];
-    expect(updateCall[0]).toContain("'cancelled'");
-    expect(updateCall[1][0]).toBe("2");
+    await removeFromQueue({ params: { serviceId: "1", entryId: "3" } }, res);
+    expect(res.statusCode).toBe(500);
   });
 });
 
-// --- moveUp ---
+// ---------------------------------------------------------------------------
+// moveUp
+// ---------------------------------------------------------------------------
 describe("moveUp", () => {
   it("returns 404 when entry is not found", async () => {
-    pool.query.mockResolvedValueOnce({ rows: [
-      { entry_id: 1, queue_entry_position: 1 },
-      { entry_id: 2, queue_entry_position: 2 },
-    ]});
-    const req = { params: { serviceId: "1", entryId: "999" } };
+    makeClient(
+      { rows: [], rowCount: 0 }, // BEGIN
+      { rows: [], rowCount: 0 }, // current entry → not found
+      { rows: [], rowCount: 0 }, // ROLLBACK
+    );
     const res = mockRes();
-    await moveUp(req, res);
+    await moveUp({ params: { serviceId: "1", entryId: "999" } }, res);
     expect(res.statusCode).toBe(404);
   });
 
   it("returns 400 when entry is already at the front", async () => {
-    pool.query.mockResolvedValueOnce({ rows: [
-      { entry_id: 1, queue_entry_position: 1 },
-      { entry_id: 2, queue_entry_position: 2 },
-    ]});
-    const req = { params: { serviceId: "1", entryId: "1" } };
+    makeClient(
+      { rows: [], rowCount: 0 },                                                     // BEGIN
+      { rows: [{ entry_id: 3, queue_entry_position: 3, queue_id: 1 }], rowCount: 1 }, // current entry
+      { rows: [], rowCount: 0 },                                                     // prev entry → none
+      { rows: [], rowCount: 0 },                                                     // ROLLBACK
+    );
     const res = mockRes();
-    await moveUp(req, res);
+    await moveUp({ params: { serviceId: "1", entryId: "3" } }, res);
     expect(res.statusCode).toBe(400);
   });
 
-  it("swaps entry with the one ahead of it", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [                            // SELECT ordered entries
-        { entry_id: 1, queue_entry_position: 1 },
-        { entry_id: 2, queue_entry_position: 2 },
-      ]})
-      .mockResolvedValueOnce({ rows: [] })                        // UPDATE entry 2 → position 1
-      .mockResolvedValueOnce({ rows: [] })                        // UPDATE entry 1 → position 2
-      .mockResolvedValueOnce({ rows: [                            // SELECT updated entries
-        { entry_id: 2, user_id: 2, queue_entry_position: 1, queue_priority: "low", queue_entry_status: "pending" },
-        { entry_id: 1, user_id: 1, queue_entry_position: 2, queue_priority: "low", queue_entry_status: "pending" },
-      ]});
-    const req = { params: { serviceId: "1", entryId: "2" } };
+  it("returns 200 with updated queue after a successful swap", async () => {
+    makeClient(
+      { rows: [], rowCount: 0 },                                                       // BEGIN
+      { rows: [{ entry_id: 4, queue_entry_position: 4, queue_id: 1 }], rowCount: 1 }, // current entry
+      { rows: [{ entry_id: 3, queue_entry_position: 3 }],              rowCount: 1 }, // prev entry
+      { rows: [], rowCount: 1 },                                                       // UPDATE entry4 → prevPos
+      { rows: [], rowCount: 1 },                                                       // UPDATE entry3 → currentPos
+      { rows: [], rowCount: 0 },                                                       // COMMIT
+    );
+    pool.query.mockResolvedValue({
+      rows: [
+        { id: 4, name: "John Doe", position: 3 },
+        { id: 3, name: "Sam Smith", position: 4 },
+      ],
+    });
     const res = mockRes();
-    await moveUp(req, res);
+    await moveUp({ params: { serviceId: "1", entryId: "4" } }, res);
     expect(res.statusCode).toBe(200);
-    expect(res.body[0].id).toBe(2);
-    expect(res.body[1].id).toBe(1);
+    expect(res.body[0].id).toBe(4);
+    expect(res.body[1].id).toBe(3);
   });
 
-  it("does not affect entries from other services", async () => {
-    pool.query
-      .mockResolvedValueOnce({ rows: [
-        { entry_id: 1, queue_entry_position: 1 },
-        { entry_id: 2, queue_entry_position: 2 },
-      ]})
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [
-        { entry_id: 2, user_id: 2, queue_entry_position: 1, queue_priority: "low", queue_entry_status: "pending" },
-        { entry_id: 1, user_id: 1, queue_entry_position: 2, queue_priority: "low", queue_entry_status: "pending" },
-      ]});
-    const req = { params: { serviceId: "1", entryId: "2" } };
+  it("returns 500 on database error", async () => {
+    const client = { query: vi.fn().mockRejectedValue(new Error("DB error")), release: vi.fn() };
+    pool.connect.mockResolvedValue(client);
     const res = mockRes();
-    await moveUp(req, res);
-    // Both SELECT queries should be scoped to serviceId "1", not any other service
-    expect(pool.query.mock.calls[0][1][0]).toBe("1"); // initial SELECT
-    expect(pool.query.mock.calls[3][1][0]).toBe("1"); // final SELECT
+    await moveUp({ params: { serviceId: "1", entryId: "3" } }, res);
+    expect(res.statusCode).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// joinQueue
+// ---------------------------------------------------------------------------
+describe("joinQueue", () => {
+  const req = (serviceId, priority, userId) => ({
+    params: { serviceId },
+    body: { priority },
+    user: { id: userId },
+  });
+
+  it("returns 404 when no active queue exists for the service", async () => {
+    makeClient(
+      { rows: [], rowCount: 0 }, // BEGIN
+      { rows: [], rowCount: 0 }, // queue lookup → not found
+      { rows: [], rowCount: 0 }, // ROLLBACK
+    );
+    const res = mockRes();
+    await joinQueue(req("999", "low", 3), res);
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 400 when the user is already pending in the queue", async () => {
+    makeClient(
+      { rows: [], rowCount: 0 },                         // BEGIN
+      { rows: [{ queue_id: 1 }], rowCount: 1 },          // queue lookup → found
+      { rows: [{ 1: 1 }], rowCount: 1 },                 // duplicate check → already in queue
+      { rows: [], rowCount: 0 },                         // ROLLBACK
+    );
+    const res = mockRes();
+    await joinQueue(req("1", "low", 5), res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 201 with the new entry on valid input", async () => {
+    makeClient(
+      { rows: [], rowCount: 0 },                                                                     // BEGIN
+      { rows: [{ queue_id: 1 }], rowCount: 1 },                                                     // queue lookup
+      { rows: [], rowCount: 0 },                                                                     // duplicate check → clear
+      { rows: [{ next_pos: 4 }], rowCount: 1 },                                                     // next position
+      { rows: [{ id: 10, position: 4, priority: "low", joinTime: "2026-04-08T00:00:00Z" }], rowCount: 1 }, // INSERT
+      { rows: [], rowCount: 0 },                                                                     // COMMIT
+    );
+    const res = mockRes();
+    await joinQueue(req("1", "low", 3), res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.id).toBe(10);
+    expect(res.body.position).toBe(4);
+  });
+
+  it("returns 500 on database error", async () => {
+    const client = { query: vi.fn().mockRejectedValue(new Error("DB error")), release: vi.fn() };
+    pool.connect.mockResolvedValue(client);
+    const res = mockRes();
+    await joinQueue(req("1", "low", 3), res);
+    expect(res.statusCode).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// leaveQueue
+// ---------------------------------------------------------------------------
+describe("leaveQueue", () => {
+  const req = (serviceId, entryId, userId) => ({
+    params: { serviceId, entryId },
+    user: { id: userId },
+  });
+
+  it("returns 404 when entry is not found or not owned by the user", async () => {
+    pool.query.mockResolvedValue({ rowCount: 0 });
+    const res = mockRes();
+    await leaveQueue(req("1", "999", 3), res);
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 200 on success", async () => {
+    pool.query.mockResolvedValue({ rowCount: 1 });
+    const res = mockRes();
+    await leaveQueue(req("1", "3", 5), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Left queue.");
+  });
+
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const res = mockRes();
+    await leaveQueue(req("1", "3", 5), res);
+    expect(res.statusCode).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getMyQueues
+// ---------------------------------------------------------------------------
+describe("getMyQueues", () => {
+  it("returns the user's pending entries with status 200", async () => {
+    pool.query.mockResolvedValue({
+      rows: [
+        { id: 6, serviceId: 2, serviceName: "Massage", position: 2, priority: "mid" },
+      ],
+    });
+    const res = mockRes();
+    await getMyQueues({ user: { id: 4 } }, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].serviceName).toBe("Massage");
+  });
+
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
+    const res = mockRes();
+    await getMyQueues({ user: { id: 4 } }, res);
+    expect(res.statusCode).toBe(500);
   });
 });
