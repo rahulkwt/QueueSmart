@@ -38,26 +38,60 @@ INSERT INTO queue (queue_name, service_id, estimated_time, is_deleted) VALUES
 
 -- ---------------------------------------------------------------
 -- QUEUE ENTRIES
--- Mix of pending, completed, and cancelled across different queues
+-- Completed/cancelled rows are inserted in bulk (no history link needed —
+-- their statuses will never change). Pending rows each get a matching
+-- pending history record via a CTE so the backend can update history
+-- correctly when the entry is served, removed, or left.
 -- ---------------------------------------------------------------
 INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority) VALUES
-  -- Haircut Queue A (queue_id=1, service_id=1)
+  -- General Consultation Queue (queue_id=1, service_id=1) — completed
   (1, 1, 3, 'completed', 1, 'high'),
   (1, 1, 4, 'completed', 2, 'mid'),
-  (1, 1, 3, 'pending',   3, 'low'),
-  (1, 1, 5, 'pending',   4, 'low'),
 
-  -- Massage Queue (queue_id=2, service_id=2)
+  -- Emergency Care Queue (queue_id=2, service_id=2) — completed/cancelled
   (2, 2, 4, 'completed', 1, 'high'),
-  (2, 2, 5, 'pending',   2, 'mid'),
   (2, 2, 4, 'cancelled', 3, 'low'),
 
-  -- Consultation Queue (queue_id=3, service_id=3)
-  (3, 3, 5, 'pending',   1, 'high'),
-  (3, 3, 3, 'pending',   2, 'mid'),
-
-  -- Nail Care Queue (queue_id=4, service_id=4)
+  -- Vaccination Queue (queue_id=4, service_id=4) — cancelled
   (4, 4, 4, 'cancelled', 1, 'low');
+
+-- Pending entries: each CTE inserts a history row and passes its ID to
+-- the queue_entry insert so they are properly linked from the start.
+
+WITH h AS (
+  INSERT INTO history (user_id, service_id, history_service_name, history_status)
+  VALUES (3, 1, 'General Consultation', 'pending') RETURNING history_id
+)
+INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+SELECT 1, 1, 3, 'pending', 3, 'low', history_id FROM h;
+
+WITH h AS (
+  INSERT INTO history (user_id, service_id, history_service_name, history_status)
+  VALUES (5, 1, 'General Consultation', 'pending') RETURNING history_id
+)
+INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+SELECT 1, 1, 5, 'pending', 4, 'low', history_id FROM h;
+
+WITH h AS (
+  INSERT INTO history (user_id, service_id, history_service_name, history_status)
+  VALUES (5, 2, 'Emergency Care', 'pending') RETURNING history_id
+)
+INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+SELECT 2, 2, 5, 'pending', 2, 'mid', history_id FROM h;
+
+WITH h AS (
+  INSERT INTO history (user_id, service_id, history_service_name, history_status)
+  VALUES (5, 3, 'Lab Tests', 'pending') RETURNING history_id
+)
+INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+SELECT 3, 3, 5, 'pending', 1, 'high', history_id FROM h;
+
+WITH h AS (
+  INSERT INTO history (user_id, service_id, history_service_name, history_status)
+  VALUES (3, 3, 'Lab Tests', 'pending') RETURNING history_id
+)
+INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+SELECT 3, 3, 3, 'pending', 2, 'mid', history_id FROM h;
 
 -- ---------------------------------------------------------------
 -- NOTIFICATIONS
@@ -79,19 +113,20 @@ INSERT INTO notifications (user_id, notif_message, notif_status) VALUES
 
 -- ---------------------------------------------------------------
 -- HISTORY
--- NOTE: history_status is constrained to 'n/a' only
+-- Tracks queue participation: status is pending | completed | cancelled
+-- history_service_name stores the service name at the time of joining
+-- history_notes is optional (e.g. staff remarks)
 -- ---------------------------------------------------------------
-INSERT INTO history (user_id, service_id, history_message, history_status) VALUES
-  -- John's history
-  (3, 1, 'Completed general consultation.',                        'n/a'),
-  (3, 3, 'Lab test results collected successfully.',               'n/a'),
+-- Completed/cancelled history from previous visits (not linked to any current queue entry).
+-- Pending history entries are created alongside their queue entries in the CTEs above.
+INSERT INTO history (user_id, service_id, history_service_name, history_notes, history_status) VALUES
+  -- John's past visits
+  (3, 1, 'General Consultation', NULL,                 'completed'),
+  (3, 3, 'Lab Tests',            NULL,                 'completed'),
 
-  -- Jane's history
-  (4, 2, 'Emergency care visit completed.',                        'n/a'),
-  (4, 4, 'Vaccination appointment completed.',                     'n/a'),
-
-  -- Sam's history
-  (5, 1, 'General consultation session completed.',                'n/a'),
+  -- Jane's past visits
+  (4, 2, 'Emergency Care',       NULL,                 'completed'),
+  (4, 4, 'Vaccination',          NULL,                 'cancelled'),
 
   -- Admin history
-  (1, 1, 'Admin reviewed General Consultation Queue completion.',  'n/a');
+  (1, 1, 'General Consultation', 'Admin test entry.',  'completed');

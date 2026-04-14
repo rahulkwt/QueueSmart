@@ -1,18 +1,33 @@
 import pool from "../db.js";
 
-const VALID_STATUSES = ["n/a", "sent", "viewed"];
+const VALID_STATUSES = ["pending", "completed", "cancelled"];
 
 /**
- * Maps a DB row from the history table to the API response shape.
+ * Formats a Date/timestamp into MM-DD-YYYY for the frontend history table.
+ */
+function formatDate(ts) {
+  const d = new Date(ts);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${mm}-${dd}-${yyyy}`;
+}
+
+/**
+ * Maps a DB row from the history table to the API response shape expected by
+ * UserHistory.jsx (service, doctor, date, status, notes).
+ * "doctor" is not tracked in the DB so it is returned as null.
  */
 function rowToEntry(row) {
   return {
     id: row.history_id,
     userId: row.user_id,
     serviceId: row.service_id,
-    message: row.history_message,
-    timestamp: row.history_time,
-    status: row.history_status,
+    service: row.history_service_name,
+    doctor: null,
+    date: formatDate(row.history_time),
+    notes: row.history_notes || null,
+    status: row.history_status.charAt(0).toUpperCase() + row.history_status.slice(1), // "pending" → "Pending"
   };
 }
 
@@ -56,35 +71,39 @@ export const getHistoryByUser = async (req, res) => {
 };
 
 /**
- * POST /api/history
- * Adds a new history record.
+ * POST /api/user/history
+ * Creates a new queue-participation history record.
+ * Accepts { service, serviceId, status } from QueueScreen when the user joins.
+ * "service" is the human-readable service name stored for display.
+ * "status" must be one of: pending, completed, cancelled (case-insensitive).
  */
 export const addHistory = async (req, res) => {
   const userId = req.user?.id || req.body.userId;
-  const { serviceId, message, status } = req.body;
+  const { service, serviceId, status } = req.body;
 
-  if (!userId || !serviceId || !message || !status) {
-    const missing = ["userId", "serviceId", "message", "status"].find((f) => {
+  if (!userId || !service || !serviceId || !status) {
+    const missing = ["userId", "service", "serviceId", "status"].find((f) => {
       if (f === "userId") return !userId;
       return !req.body[f];
     });
     return res.status(400).json({ error: `${missing} is required.` });
   }
 
-  if (message.length > 255) {
-    return res.status(400).json({ error: "message exceeds max length of 255." });
+  if (service.length > 255) {
+    return res.status(400).json({ error: "service name exceeds max length of 255." });
   }
 
-  if (!VALID_STATUSES.includes(status)) {
+  const normalizedStatus = status.toLowerCase();
+  if (!VALID_STATUSES.includes(normalizedStatus)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO history (user_id, service_id, history_message, history_status)
+      `INSERT INTO history (user_id, service_id, history_service_name, history_status)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [userId, serviceId, message, status]
+      [userId, serviceId, service, normalizedStatus]
     );
     res.status(201).json(rowToEntry(result.rows[0]));
   } catch (err) {
@@ -94,8 +113,9 @@ export const addHistory = async (req, res) => {
 };
 
 /**
- * PATCH /api/history/:id
+ * PATCH /api/user/history/:id
  * Updates the status of a history record the authenticated user owns.
+ * QueueScreen sends { status: "Completed" } or { status: "Cancelled" } — accepted case-insensitively.
  */
 export const updateHistoryEntry = async (req, res) => {
   const { id } = req.params;
@@ -106,7 +126,8 @@ export const updateHistoryEntry = async (req, res) => {
     return res.status(400).json({ error: "id must be a positive integer." });
   }
 
-  if (!status || !VALID_STATUSES.includes(status)) {
+  const normalizedStatus = status ? status.toLowerCase() : null;
+  if (!normalizedStatus || !VALID_STATUSES.includes(normalizedStatus)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
   }
 
@@ -126,7 +147,7 @@ export const updateHistoryEntry = async (req, res) => {
 
     const result = await pool.query(
       "UPDATE history SET history_status = $1 WHERE history_id = $2 RETURNING *",
-      [status, numId]
+      [normalizedStatus, numId]
     );
     res.json(rowToEntry(result.rows[0]));
   } catch (err) {

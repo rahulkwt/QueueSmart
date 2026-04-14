@@ -1,5 +1,9 @@
 import pool from "../db.js";
 
+// DB stores 'low'/'mid'/'high'; frontend expects 'Low'/'Medium'/'High'.
+const PRIORITY_IN = { low: "low", medium: "mid", high: "high" };
+const PRIORITY_OUT = { low: "Low", mid: "Medium", high: "High" };
+
 export async function getQueue(req, res) {
   const { serviceId } = req.params;
   try {
@@ -17,7 +21,7 @@ export async function getQueue(req, res) {
       userId: row.user_id,
       name: row.user_full_name,
       serviceId: parseInt(serviceId),
-      priority: row.queue_priority,
+      priority: PRIORITY_OUT[row.queue_priority] || row.queue_priority,
       status: row.queue_entry_status,
       position: row.queue_entry_position,
       date: row.queue_join_time,
@@ -33,7 +37,7 @@ export async function serveNext(req, res) {
   const { serviceId } = req.params;
   try {
     const result = await pool.query(
-      `SELECT entry_id, user_id FROM queue_entry
+      `SELECT entry_id, user_id, history_id FROM queue_entry
        WHERE service_id = $1 AND queue_entry_status = 'pending'
        ORDER BY queue_entry_position ASC LIMIT 1`,
       [serviceId]
@@ -41,12 +45,19 @@ export async function serveNext(req, res) {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Queue is empty for this service." });
     }
-    const { entry_id, user_id } = result.rows[0];
+    const { entry_id, user_id, history_id } = result.rows[0];
 
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'completed' WHERE entry_id = $1",
       [entry_id]
     );
+
+    if (history_id) {
+      await pool.query(
+        "UPDATE history SET history_status = 'completed' WHERE history_id = $1",
+        [history_id]
+      );
+    }
 
     return res.status(200).json({ message: "Served.", entryId: entry_id, userId: user_id });
   } catch (err) {
@@ -59,17 +70,25 @@ export async function removeFromQueue(req, res) {
   const { serviceId, entryId } = req.params;
   try {
     const result = await pool.query(
-      "SELECT entry_id FROM queue_entry WHERE entry_id = $1 AND service_id = $2 AND queue_entry_status = 'pending'",
+      "SELECT entry_id, history_id FROM queue_entry WHERE entry_id = $1 AND service_id = $2 AND queue_entry_status = 'pending'",
       [entryId, serviceId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Entry not found in queue." });
     }
+    const { history_id } = result.rows[0];
 
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'cancelled' WHERE entry_id = $1",
       [entryId]
     );
+
+    if (history_id) {
+      await pool.query(
+        "UPDATE history SET history_status = 'cancelled' WHERE history_id = $1",
+        [history_id]
+      );
+    }
 
     return res.status(200).json({ message: "Removed from queue." });
   } catch (err) {
@@ -126,49 +145,77 @@ export async function joinQueue(req, res) {
   const { priority = "low" } = req.body;
   const userId = req.user.id;
 
+  // Normalize frontend values ('Low'/'Medium'/'High') to DB values ('low'/'mid'/'high').
+  const dbPriority = PRIORITY_IN[(priority || "low").toLowerCase()] || "low";
+
+  const client = await pool.connect();
   try {
-    const queueResult = await pool.query(
+    await client.query("BEGIN");
+
+    const queueResult = await client.query(
       "SELECT queue_id FROM queue WHERE service_id = $1 AND is_deleted = false LIMIT 1",
       [serviceId]
     );
     if (queueResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "No queue found for this service." });
     }
     const queueId = queueResult.rows[0].queue_id;
 
-    const existing = await pool.query(
+    const existing = await client.query(
       "SELECT entry_id FROM queue_entry WHERE queue_id = $1 AND user_id = $2 AND queue_entry_status = 'pending'",
       [queueId, userId]
     );
     if (existing.rows.length > 0) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "Already in this queue." });
     }
 
-    const posResult = await pool.query(
+    const posResult = await client.query(
       "SELECT COALESCE(MAX(queue_entry_position), 0) + 1 AS next_pos FROM queue_entry WHERE queue_id = $1 AND queue_entry_status = 'pending'",
       [queueId]
     );
     const position = posResult.rows[0].next_pos;
 
-    const entry = await pool.query(
-      `INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority)
-       VALUES ($1, $2, $3, 'pending', $4, $5) RETURNING *`,
-      [queueId, serviceId, userId, position, (priority || "low").toLowerCase()]
+    const svcResult = await client.query(
+      "SELECT service_name FROM services WHERE service_id = $1",
+      [serviceId]
     );
+    const serviceName = svcResult.rows[0]?.service_name || "Unknown Service";
+
+    // Create the history row first, then the queue entry that references it.
+    // Both are inside a transaction so a failure in either rolls everything back.
+    const histResult = await client.query(
+      `INSERT INTO history (user_id, service_id, history_service_name, history_status)
+       VALUES ($1, $2, $3, 'pending') RETURNING history_id`,
+      [userId, serviceId, serviceName]
+    );
+    const historyId = histResult.rows[0].history_id;
+
+    const entry = await client.query(
+      `INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority, history_id)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6) RETURNING *`,
+      [queueId, serviceId, userId, position, dbPriority, historyId]
+    );
+
+    await client.query("COMMIT");
 
     const row = entry.rows[0];
     return res.status(201).json({
       id: row.entry_id,
       userId: row.user_id,
       serviceId: row.service_id,
-      priority: row.queue_priority,
+      priority: PRIORITY_OUT[row.queue_priority] || row.queue_priority,
       status: row.queue_entry_status,
       position: row.queue_entry_position,
       date: row.queue_join_time,
     });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("joinQueue error:", err);
     return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
 }
 
@@ -176,22 +223,27 @@ export async function leaveQueue(req, res) {
   const { serviceId, entryId } = req.params;
   const userId = req.user.id;
   try {
-    // OR:       "SELECT entry_id FROM queue_entry WHERE entry_id = $1 AND service_id = $2 AND user_id = $3 AND queue_entry_status = 'pending'",
     const result = await pool.query(
-      `UPDATE queue_entry qe
+      `UPDATE queue_entry
        SET queue_entry_status = 'cancelled'
-       FROM queue q
-       WHERE qe.queue_id = q.queue_id
-         AND qe.entry_id = $1
-         AND q.service_id = $2
-         AND qe.user_id = $3
-         AND qe.queue_entry_status = 'pending'
-       RETURNING qe.entry_id`,
+       WHERE entry_id = $1
+         AND service_id = $2
+         AND user_id = $3
+         AND queue_entry_status = 'pending'
+       RETURNING entry_id, history_id`,
       [entryId, serviceId, userId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Entry not found." });
+    }
+
+    const { history_id } = result.rows[0];
+    if (history_id) {
+      await pool.query(
+        "UPDATE history SET history_status = 'cancelled' WHERE history_id = $1",
+        [history_id]
+      );
     }
 
     return res.status(200).json({ message: "Left queue." });
@@ -214,7 +266,7 @@ export async function getMyQueues(req, res) {
       id: row.entry_id,
       userId,
       serviceId: row.service_id,
-      priority: row.queue_priority,
+      priority: PRIORITY_OUT[row.queue_priority] || row.queue_priority,
       status: row.queue_entry_status,
       position: row.queue_entry_position,
       date: row.queue_join_time,
