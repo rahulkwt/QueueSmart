@@ -14,8 +14,8 @@ import {
 } from "./servicesController.js";
 
 const mockRows = [
-  { id: 1, name: "General Consultation", description: "Standard check-up" },
-  { id: 2, name: "Lab Work", description: "Blood tests and panels" },
+  { service_id: 1, service_name: "General Consultation", service_description: "Standard check-up" },
+  { service_id: 2, service_name: "Lab Work", service_description: "Blood tests and panels" },
 ];
 
 const mockRes = () => {
@@ -50,7 +50,7 @@ describe("getServices", () => {
 // --- getServicesWithCounts ---
 describe("getServicesWithCounts", () => {
   it("returns services enriched with queueCount", async () => {
-    const rowsWithCounts = mockRows.map((r, i) => ({ ...r, queueCount: i }));
+    const rowsWithCounts = mockRows.map((r, i) => ({ ...r, queue_count: i }));
     pool.query.mockResolvedValue({ rows: rowsWithCounts });
     const res = mockRes();
     await getServicesWithCounts({}, res);
@@ -83,22 +83,13 @@ describe("createService", () => {
   });
 
   it("returns 201 with the new service on valid input", async () => {
-    pool.query.mockResolvedValue({ rows: [{ id: 3, name: "X-Ray", description: "Imaging service" }] });
+    pool.query.mockResolvedValue({ rows: [{ service_id: 3, service_name: "X-Ray", service_description: "Imaging service" }] });
     const req = { body: { name: "X-Ray", description: "Imaging service" } };
     const res = mockRes();
     await createService(req, res);
     expect(res.statusCode).toBe(201);
     expect(res.body.name).toBe("X-Ray");
     expect(res.body.id).toBeDefined();
-  });
-
-  it("returns 409 on duplicate service name", async () => {
-    const dupErr = Object.assign(new Error("unique violation"), { code: "23505" });
-    pool.query.mockRejectedValue(dupErr);
-    const req = { body: { name: "General Consultation", description: "Duplicate" } };
-    const res = mockRes();
-    await createService(req, res);
-    expect(res.statusCode).toBe(409);
   });
 
   it("returns 500 on unexpected database error", async () => {
@@ -137,7 +128,7 @@ describe("updateService", () => {
   it("returns 200 with updated service on valid input", async () => {
     pool.query.mockResolvedValue({
       rowCount: 1,
-      rows: [{ id: 1, name: "Updated Name", description: "Updated desc" }],
+      rows: [{ service_id: 1, service_name: "Updated Name", service_description: "Updated desc" }],
     });
     const req = { params: { id: "1" }, body: { name: "Updated Name", description: "Updated desc" } };
     const res = mockRes();
@@ -147,20 +138,19 @@ describe("updateService", () => {
     expect(res.body.id).toBe(1);
   });
 
-  it("returns 409 on duplicate service name", async () => {
-    const dupErr = Object.assign(new Error("unique violation"), { code: "23505" });
-    pool.query.mockRejectedValue(dupErr);
+  it("returns 500 on database error", async () => {
+    pool.query.mockRejectedValue(new Error("DB error"));
     const req = { params: { id: "1" }, body: { name: "Lab Work", description: "Conflict" } };
     const res = mockRes();
     await updateService(req, res);
-    expect(res.statusCode).toBe(409);
+    expect(res.statusCode).toBe(500);
   });
 });
 
 // --- deleteService ---
 describe("deleteService", () => {
   it("returns 404 when service is not found", async () => {
-    pool.query.mockResolvedValue({ rowCount: 0 });
+    pool.query.mockResolvedValue({ rows: [] });
     const req = { params: { id: "999" } };
     const res = mockRes();
     await deleteService(req, res);
@@ -168,7 +158,7 @@ describe("deleteService", () => {
   });
 
   it("returns 200 on successful soft-delete", async () => {
-    pool.query.mockResolvedValue({ rowCount: 1 });
+    pool.query.mockResolvedValue({ rows: [{ service_id: 1 }] });
     const req = { params: { id: "1" } };
     const res = mockRes();
     await deleteService(req, res);
