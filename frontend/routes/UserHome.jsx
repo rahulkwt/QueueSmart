@@ -37,7 +37,7 @@ const UserHome = () => {
         services.map(async (svc) => {
           try {
             const res = await axios.get(
-              `http://localhost:3000/api/admin/queue/${svc.id}`,
+              `http://localhost:3000/api/queue/${svc.id}`,
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
             const queueLen = res.data.length;
