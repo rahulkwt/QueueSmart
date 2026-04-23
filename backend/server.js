@@ -14,6 +14,7 @@ import servicesRoute from "./src/routes/servicesRoute.js";
 import queueRoutes from "./src/routes/queueRoutes.js";
 import userQueueRoutes from "./src/routes/userQueueRoutes.js";
 import waitTimeRoutes from "./src/routes/waitTimeRoutes.js";
+import aiChatRoutes from "./src/routes/aiChatRoutes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api", waitTimeRoutes); // mount wait-time estimation: /api/queue/:serv
 
 app.use("/api/admin", servicesRoute);
 app.use("/api/admin", queueRoutes);
+app.use("/api/ai", aiChatRoutes);
 
 const PORT = 3000;
 
