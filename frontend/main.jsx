@@ -17,6 +17,7 @@ import ErrorPage from "./routes/ErrorPage";
 import QueueScreen from "./routes/QueueScreen";
 import QueueManagement from "./routes/QueueManagement";
 import QueueStatus from "./routes/QueueStatus";
+import DataReports from "./routes/DataReports";
 import PublicLayout from "./layouts/PublicLayout";
 import PortalLayout from "./layouts/PortalLayout";
 import UserHome from "./routes/UserHome";
@@ -72,7 +73,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <AdminHome /> },
           { path: "service-management", element: <ServiceManage /> },
-          { path: "queue-management", element: <QueueManagement /> }
+          { path: "queue-management", element: <QueueManagement /> },
+          { path: "data-reports", element: <DataReports /> }
         ] 
       },
 

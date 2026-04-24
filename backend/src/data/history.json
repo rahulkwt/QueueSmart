@@ -497,5 +497,45 @@
     "notes": "",
     "status": "Pending",
     "serviceId": 3
+  },
+  {
+    "id": 51,
+    "userId": 3,
+    "service": "General Consultation",
+    "doctor": "",
+    "date": "04-20-2026",
+    "notes": "",
+    "status": "Cancelled",
+    "serviceId": 1
+  },
+  {
+    "id": 52,
+    "userId": 3,
+    "service": "General Consultation",
+    "doctor": "",
+    "date": "04-20-2026",
+    "notes": "",
+    "status": "Cancelled",
+    "serviceId": 1
+  },
+  {
+    "id": 53,
+    "userId": 3,
+    "service": "General Consultation",
+    "doctor": "",
+    "date": "04-20-2026",
+    "notes": "",
+    "status": "Pending",
+    "serviceId": 1
+  },
+  {
+    "id": 54,
+    "userId": 3,
+    "service": "General Consultation",
+    "doctor": "",
+    "date": "04-23-2026",
+    "notes": "",
+    "status": "Pending",
+    "serviceId": 1
   }
 ]

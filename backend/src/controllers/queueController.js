@@ -1,5 +1,50 @@
 import pool from "../db.js";
 
+// Priority order: high can skip up to 2 low/mid entries ahead of it.
+// Mid can skip up to 1 low entry ahead of it. Low never skips.
+function computePriorityOrder(entries) {
+  const effective = [...entries];
+  for (let i = 0; i < effective.length; i++) {
+    const p = effective[i].priority;
+    if (p === "high") {
+      let skipped = 0;
+      let pos = i;
+      while (pos > 0 && skipped < 2) {
+        const ahead = effective[pos - 1].priority;
+        if (ahead === "low" || ahead === "mid") {
+          [effective[pos - 1], effective[pos]] = [effective[pos], effective[pos - 1]];
+          pos--;
+          skipped++;
+        } else {
+          break;
+        }
+      }
+    } else if (p === "mid") {
+      if (i > 0 && effective[i - 1].priority === "low") {
+        [effective[i - 1], effective[i]] = [effective[i], effective[i - 1]];
+      }
+    }
+  }
+  return effective;
+}
+
+async function reorderQueue(queueId) {
+  const result = await pool.query(
+    `SELECT entry_id, queue_priority FROM queue_entry
+     WHERE queue_id = $1 AND queue_entry_status = 'pending'
+     ORDER BY queue_entry_position ASC`,
+    [queueId]
+  );
+  const entries = result.rows.map((r) => ({ id: r.entry_id, priority: r.queue_priority }));
+  const reordered = computePriorityOrder(entries);
+  for (let i = 0; i < reordered.length; i++) {
+    await pool.query(
+      "UPDATE queue_entry SET queue_entry_position = $1 WHERE entry_id = $2",
+      [i + 1, reordered[i].id]
+    );
+  }
+}
+
 export async function getQueue(req, res) {
   const { serviceId } = req.params;
   try {
@@ -43,10 +88,17 @@ export async function serveNext(req, res) {
     }
     const { entry_id, user_id } = result.rows[0];
 
+    const queueIdRes = await pool.query(
+      "SELECT queue_id FROM queue_entry WHERE entry_id = $1",
+      [entry_id]
+    );
+
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'completed' WHERE entry_id = $1",
       [entry_id]
     );
+
+    await reorderQueue(queueIdRes.rows[0].queue_id);
 
     return res.status(200).json({ message: "Served.", entryId: entry_id, userId: user_id });
   } catch (err) {
@@ -66,10 +118,17 @@ export async function removeFromQueue(req, res) {
       return res.status(404).json({ message: "Entry not found in queue." });
     }
 
+    const queueIdRes = await pool.query(
+      "SELECT queue_id FROM queue_entry WHERE entry_id = $1",
+      [entryId]
+    );
+
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'cancelled' WHERE entry_id = $1",
       [entryId]
     );
+
+    await reorderQueue(queueIdRes.rows[0].queue_id);
 
     return res.status(200).json({ message: "Removed from queue." });
   } catch (err) {
@@ -150,13 +209,21 @@ export async function joinQueue(req, res) {
     );
     const position = posResult.rows[0].next_pos;
 
+    const normalizedPriority = ({ low: "low", medium: "mid", mid: "mid", high: "high" })[(priority || "low").toLowerCase()] ?? "low";
+
     const entry = await pool.query(
       `INSERT INTO queue_entry (queue_id, service_id, user_id, queue_entry_status, queue_entry_position, queue_priority)
        VALUES ($1, $2, $3, 'pending', $4, $5) RETURNING *`,
-      [queueId, serviceId, userId, position, (priority || "low").toLowerCase()]
+      [queueId, serviceId, userId, position, normalizedPriority]
     );
 
-    const row = entry.rows[0];
+    await reorderQueue(queueId);
+
+    const updated = await pool.query(
+      "SELECT * FROM queue_entry WHERE entry_id = $1",
+      [entry.rows[0].entry_id]
+    );
+    const row = updated.rows[0];
     return res.status(201).json({
       id: row.entry_id,
       userId: row.user_id,
@@ -185,10 +252,18 @@ export async function leaveQueue(req, res) {
       return res.status(404).json({ message: "Entry not found." });
     }
 
+    const queueRes = await pool.query(
+      "SELECT queue_id FROM queue_entry WHERE entry_id = $1",
+      [entryId]
+    );
+    const queueId = queueRes.rows[0].queue_id;
+
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'cancelled' WHERE entry_id = $1",
       [entryId]
     );
+
+    await reorderQueue(queueId);
 
     return res.status(200).json({ message: "Left queue." });
   } catch (err) {

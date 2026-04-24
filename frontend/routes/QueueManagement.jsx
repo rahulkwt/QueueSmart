@@ -12,11 +12,12 @@ const QueueManagement = () => {
   // Fetch the live queue for the given service id
   const fetchQueue = (serviceId) => {
     if (!serviceId) return;
-    fetch(`${QUEUES_PATH}/${serviceId}`, { 
+    fetch(`${QUEUES_PATH}/${serviceId}`, {
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then((res) => res.json())
-      .then((data) => setQueue(data));
+      .then((data) => setQueue(Array.isArray(data) ? data : []))
+      .catch(() => setQueue([]));
   };
 
   // Fetch configured services once on mount; default-select the first one
@@ -72,70 +73,104 @@ const QueueManagement = () => {
       .then(() => fetchQueue(selectedService));
   };
 
+  const priorityBadge = (p) => {
+    if (!p) return <span className="badge bg-secondary">Low</span>;
+    const lower = p.toLowerCase();
+    if (lower === "high") return <span className="badge bg-danger">High</span>;
+    if (lower === "mid" || lower === "medium") return <span className="badge bg-warning text-dark">Medium</span>;
+    return <span className="badge bg-secondary">Low</span>;
+  };
+
+  const selectedServiceName = services.find((s) => s.id === selectedService)?.name ?? "";
+
   return (
-    <div className="">
-      <h2 className="mb-4">Queue Management</h2>
-
-      {/* Select Service */}
-      <div className="mb-3">
-        <label className="form-label">Select Service</label>
-        <select
-          className="form-select"
-          value={selectedService}
-          onChange={(e) => setSelectedService(e.target.value)}
-        >
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+    <div className="container-fluid py-2">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 className="mb-0 fw-bold">Queue Management</h4>
+          <small className="text-muted">Manage and serve patients in real time</small>
+        </div>
+        <span className="badge bg-danger-subtle text-danger border px-3 py-2" style={{ fontSize: "0.85rem" }}>
+          <i className="feather-shield me-1"></i> Admin Access
+        </span>
       </div>
 
-      {/* Queue List */}
-      <div className="card p-3 mb-4">
-        <h5>Current Queue</h5>
+      {/* Service Tabs */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        {services.map((s) => (
+          <button
+            key={s.id}
+            className={`btn ${selectedService === s.id ? "btn-primary" : "btn-outline-secondary"}`}
+            onClick={() => setSelectedService(s.id)}
+          >
+            {s.name}
+            {selectedService === s.id && queue.length > 0 && (
+              <span className="badge bg-white text-primary ms-2" style={{ fontSize: "0.7rem" }}>{queue.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
 
-        {queue.length === 0 ? (
-          <p>No users in queue.</p>
-        ) : (
-          <ul className="list-group">
-            {queue.map((entry, index) => (
-              <li
-                key={entry.id}
-                className="list-group-item d-flex justify-content-between align-items-center"
-              >
-                <span>
-                  #{index + 1} - {entry.name}
-                </span>
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-header bg-white">
+          <h6 className="mb-0 fw-bold">{selectedServiceName}</h6>
+        </div>
 
-                <div>
-                  <button
-                    className="btn btn-sm btn-outline-secondary me-2"
-                    onClick={() => moveUp(entry.id)}
-                    disabled={index === 0}
-                  >
-                    ↑
-                  </button>
+        <div className="card-body p-0">
+          {queue.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <i className="feather-inbox" style={{ fontSize: "2rem" }}></i>
+              <p className="mt-2 mb-0">No patients in queue for {selectedServiceName}</p>
+            </div>
+          ) : (
+            <table className="table table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: 60 }}>#</th>
+                  <th>Patient</th>
+                  <th>Priority</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queue.map((entry, index) => (
+                  <tr key={entry.id} className="align-middle">
+                    <td className="fw-bold text-muted">{index + 1}</td>
+                    <td>
+                      <div className="fw-semibold">{entry.name}</div>
+                    </td>
+                    <td>{priorityBadge(entry.priority)}</td>
+                    <td className="text-end">
+                      <button
+                        className="btn btn-sm btn-outline-secondary me-2"
+                        onClick={() => moveUp(entry.id)}
+                        disabled={index === 0}
+                        title="Move up"
+                      >
+                        <i className="feather-arrow-up"></i>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => removeUser(entry.id)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => removeUser(entry.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {queue.length > 0 && (
+          <div className="card-footer bg-white">
+            <button className="btn btn-primary" onClick={serveNext}>
+              <i className="feather-check me-2"></i>Serve Next Patient
+            </button>
+          </div>
         )}
-      </div>
-
-      {/* Buttons */}
-      <div className="d-flex gap-3">
-        <button className="btn btn-success" onClick={serveNext}>
-          Serve Next User
-        </button>
       </div>
     </div>
   );

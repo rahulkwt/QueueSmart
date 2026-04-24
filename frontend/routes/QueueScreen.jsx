@@ -79,7 +79,8 @@ const JoinQueue = () => {
       if (myEntry) {
         setJoined(true);
         setQueueId(myEntry.id);
-        setPriority(myEntry.priority || "Low");
+        const raw = (myEntry.priority || "low").toLowerCase();
+        setPriority(raw === "mid" ? "Medium" : raw.charAt(0).toUpperCase() + raw.slice(1));
         const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
         setPosition(pos);
         try {

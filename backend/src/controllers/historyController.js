@@ -1,25 +1,30 @@
-import { readFileSync, writeFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import pool from "../db.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const HISTORY_FILE = join(__dirname, "../data/history.json");
-
-const VALID_STATUSES = ["Pending", "Completed", "Cancelled", "Aborted"];
-const DATE_REGEX = /^\d{2}-\d{2}-\d{4}$/;
-
-function readHistory() {
-  return JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
-}
-
-function writeHistory(history) {
-  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-}
-
-export const getHistory = (req, res) => {
+export const getHistory = async (req, res) => {
   const userId = req.user.id;
-  const history = readHistory().filter((entry) => entry.userId === userId);
-  res.json(history);
+  try {
+    const result = await pool.query(
+      `SELECT e.entry_id, e.queue_entry_status, e.queue_entry_position, e.queue_priority, e.queue_join_time,
+              s.service_name
+       FROM queue_entry e
+       JOIN services s ON s.service_id = e.service_id
+       WHERE e.user_id = $1
+       ORDER BY e.queue_join_time DESC`,
+      [userId]
+    );
+    const history = result.rows.map((row) => ({
+      id: row.entry_id,
+      service: row.service_name,
+      status: row.queue_entry_status.charAt(0).toUpperCase() + row.queue_entry_status.slice(1),
+      position: row.queue_entry_position,
+      priority: row.queue_priority,
+      date: new Date(row.queue_join_time).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }),
+    }));
+    res.json(history);
+  } catch (err) {
+    console.error("getHistory error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
 };
 
 export const getHistoryByUser = (req, res) => {

@@ -15,54 +15,21 @@ const iconColors = [
 const UserHome = () => {
   const { user } = useAuth();
   const [services, setServices] = useState([]);
-  const [waitTimes, setWaitTimes] = useState({});
 
-  // Fetch configured services from the admin services endpoint
-  useEffect(() => {
+  const fetchServices = () => {
     axios
-      .get("http://localhost:3000/api/admin/services", {
+      .get("http://localhost:3000/api/admin/services/with-counts", {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       .then((res) => setServices(res.data))
       .catch(() => {});
-  }, []);
+  };
 
-
-  // Fetch queue length for each service to calculate wait times
   useEffect(() => {
-    if (services.length === 0) return;
-
-    const fetchAll = async () => {
-      const results = await Promise.all(
-        services.map(async (svc) => {
-          try {
-            const res = await axios.get(
-              `http://localhost:3000/api/admin/queue/${svc.id}`,
-              { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-            const queueLen = res.data.length;
-            try {
-              const waitRes = await fetch(
-                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=5`
-              );
-              const waitData = await waitRes.json();
-              const lastEntry = waitData.queue[waitData.queue.length - 1];
-              return { id: svc.id, wait: lastEntry ? lastEntry.estimatedWaitMinutes : 0 };
-            } catch {
-              return { id: svc.id, wait: queueLen * 5 };
-            }
-          } catch {
-            return { id: svc.id, wait: 0 };
-          }
-        })
-      );
-      const map = {};
-      results.forEach(({ id, wait }) => { map[id] = wait; });
-      setWaitTimes(map);
-    };
-
-    fetchAll();
-  }, [services]);
+    fetchServices();
+    const interval = setInterval(fetchServices, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div
@@ -86,7 +53,7 @@ const UserHome = () => {
       >
         {services.map((svc, idx) => {
           const color = iconColors[idx % iconColors.length];
-          const wait = waitTimes[svc.id] ?? null;
+          const wait = svc.queueCount != null ? svc.queueCount * 5 : null;
           return (
             <Link
               key={svc.id}
