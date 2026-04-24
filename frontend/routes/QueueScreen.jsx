@@ -10,6 +10,7 @@ const JoinQueue = () => {
   const decodedService = decodeURIComponent(service);
 
   const [serviceId, setServiceId] = useState(null);
+  const [serviceDuration, setServiceDuration] = useState(5);
   const [joined, setJoined] = useState(false);
   const joinedRef = useRef(false);
   const [priority, setPriority] = useState("Low");
@@ -37,7 +38,10 @@ const JoinQueue = () => {
       })
       .then((res) => {
         const svc = res.data.find((s) => s.name === decodedService);
-        if (svc) setServiceId(svc.id);
+        if (svc) {
+          setServiceId(svc.id);
+          if (svc.duration) setServiceDuration(svc.duration);
+        }
       })
       .catch((err) => console.error("Error fetching services:", err));
   }, [decodedService]);
@@ -61,12 +65,12 @@ const JoinQueue = () => {
         setPosition(pos);
         try {
           const waitRes = await fetch(
-            `http://localhost:3000/api/queue/${svcId}/wait-time?entryId=${myEntry.id}&avgDuration=5`
+            `http://localhost:3000/api/queue/${svcId}/wait-time?entryId=${myEntry.id}&avgDuration=${serviceDuration}`
           );
           const waitData = await waitRes.json();
           setEstimatedWait(waitData.estimatedWaitMinutes);
         } catch {
-          setEstimatedWait(pos * 5);
+          setEstimatedWait(pos * serviceDuration);
         }
       } else if (joinedRef.current) {
         // User was served or removed by admin — backend updated history automatically.
@@ -173,7 +177,7 @@ const JoinQueue = () => {
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
-            <p className="fs-4 mb-0">{estimatedWait ?? (peopleInQueue != null ? peopleInQueue * 5 : 0)} minutes</p>
+            <p className="fs-4 mb-0">{estimatedWait ?? (peopleInQueue != null ? peopleInQueue * serviceDuration : 0)} minutes</p>
           </div>
         </div>
       </div>

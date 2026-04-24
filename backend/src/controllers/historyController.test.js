@@ -12,13 +12,15 @@ import { getHistory, getHistoryByUser, addHistory, updateHistoryEntry, deleteHis
 const mockRows = [
   {
     history_id: 1, user_id: 1, service_id: 1,
-    history_message: "Completed general consultation.",
-    history_time: "2026-01-15T00:00:00Z", history_status: "n/a",
+    history_service_name: "General Consultation",
+    history_notes: null,
+    history_time: "2026-01-15T00:00:00Z", history_status: "completed",
   },
   {
     history_id: 2, user_id: 2, service_id: 2,
-    history_message: "Emergency care visit completed.",
-    history_time: "2026-02-01T00:00:00Z", history_status: "sent",
+    history_service_name: "Emergency Care",
+    history_notes: null,
+    history_time: "2026-02-01T00:00:00Z", history_status: "completed",
   },
 ];
 
@@ -102,14 +104,15 @@ describe("addHistory", () => {
   const validBody = {
     userId: 3,
     serviceId: 1,
-    message: "General consultation completed.",
-    status: "n/a",
+    service: "General Consultation",
+    status: "pending",
   };
 
   const newRow = {
     history_id: 3, user_id: 3, service_id: 1,
-    history_message: "General consultation completed.",
-    history_time: "2026-03-01T00:00:00Z", history_status: "n/a",
+    history_service_name: "General Consultation",
+    history_time: "2026-03-01T00:00:00Z", history_status: "pending",
+    history_notes: null,
   };
 
   it("creates a new record with valid input", async () => {
@@ -119,7 +122,7 @@ describe("addHistory", () => {
     await addHistory(req, res);
     expect(res.statusCode).toBe(201);
     expect(res.body.userId).toBe(3);
-    expect(res.body.message).toBe("General consultation completed.");
+    expect(res.body.service).toBe("General Consultation");
   });
 
   it("uses req.user.id as userId when available", async () => {
@@ -133,11 +136,11 @@ describe("addHistory", () => {
   });
 
   it("returns 400 when a required field is missing", async () => {
-    const req = { body: { ...validBody, message: "" } };
+    const req = { body: { ...validBody, service: "" } };
     const res = mockRes();
     await addHistory(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("message");
+    expect(res.body.error).toContain("service");
   });
 
   it("returns 400 when serviceId is missing", async () => {
@@ -157,12 +160,12 @@ describe("addHistory", () => {
     expect(res.body.error).toContain("status");
   });
 
-  it("returns 400 when message exceeds 255 characters", async () => {
-    const req = { body: { ...validBody, message: "x".repeat(256) } };
+  it("returns 400 when service name exceeds 255 characters", async () => {
+    const req = { body: { ...validBody, service: "x".repeat(256) } };
     const res = mockRes();
     await addHistory(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain("message");
+    expect(res.body.error).toContain("service");
   });
 
   it("returns 500 when database query fails", async () => {
@@ -177,19 +180,19 @@ describe("addHistory", () => {
 // --- updateHistoryEntry ---
 describe("updateHistoryEntry", () => {
   it("updates the status of an owned entry", async () => {
-    const updatedRow = { ...mockRows[0], history_status: "viewed" };
+    const updatedRow = { ...mockRows[0], history_service_name: "General Consultation", history_notes: null, history_status: "completed" };
     pool.query
       .mockResolvedValueOnce({ rows: [{ user_id: 1 }] })   // ownership check
       .mockResolvedValueOnce({ rows: [updatedRow] });        // update
-    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "viewed" } };
+    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "completed" } };
     const res = mockRes();
     await updateHistoryEntry(req, res);
-    expect(res.body.status).toBe("viewed");
+    expect(res.body.status).toBe("Completed");
   });
 
   it("returns 403 when user does not own the entry", async () => {
     pool.query.mockResolvedValueOnce({ rows: [{ user_id: 1 }] });
-    const req = { params: { id: "1" }, user: { id: 999 }, body: { status: "viewed" } };
+    const req = { params: { id: "1" }, user: { id: 999 }, body: { status: "completed" } };
     const res = mockRes();
     await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(403);
@@ -197,7 +200,7 @@ describe("updateHistoryEntry", () => {
 
   it("returns 404 when entry is not found", async () => {
     pool.query.mockResolvedValueOnce({ rows: [] });
-    const req = { params: { id: "999" }, user: { id: 1 }, body: { status: "viewed" } };
+    const req = { params: { id: "999" }, user: { id: 1 }, body: { status: "completed" } };
     const res = mockRes();
     await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(404);
@@ -211,7 +214,7 @@ describe("updateHistoryEntry", () => {
   });
 
   it("returns 400 when id is not a positive integer", async () => {
-    const req = { params: { id: "0" }, user: { id: 1 }, body: { status: "viewed" } };
+    const req = { params: { id: "0" }, user: { id: 1 }, body: { status: "completed" } };
     const res = mockRes();
     await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(400);
@@ -219,7 +222,7 @@ describe("updateHistoryEntry", () => {
 
   it("returns 500 when database query fails", async () => {
     pool.query.mockRejectedValue(new Error("DB error"));
-    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "viewed" } };
+    const req = { params: { id: "1" }, user: { id: 1 }, body: { status: "completed" } };
     const res = mockRes();
     await updateHistoryEntry(req, res);
     expect(res.statusCode).toBe(500);

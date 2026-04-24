@@ -33,6 +33,7 @@ const QueueStatus = () => {
         myEntries.map(async (entry) => {
           const svc = allServices.find((s) => s.id === entry.serviceId);
           const serviceName = svc ? svc.name : "Unknown Service";
+          const duration = svc?.duration || 5;
 
           try {
             const queueRes = await axios.get(
@@ -41,14 +42,14 @@ const QueueStatus = () => {
             );
             const queue = queueRes.data;
             const position = queue.findIndex((e) => e.id === entry.id) + 1;
-            let estimatedWait = position > 0 ? position * 5 : 0;
+            let estimatedWait = position > 0 ? position * duration : 0;
             try {
               const waitRes = await fetch(
-                `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=5`
+                `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=${duration}`
               );
               const waitData = await waitRes.json();
               estimatedWait = waitData.estimatedWaitMinutes;
-            } catch { /* fall back to position * 5 */ }
+            } catch { /* fall back to position * duration */ }
 
             let status = "Pending";
             if (position === 1) status = "Almost Ready";
