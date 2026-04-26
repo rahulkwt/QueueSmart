@@ -15,20 +15,16 @@ const iconColors = [
 const UserHome = () => {
   const { user } = useAuth();
   const [services, setServices] = useState([]);
-  const [waitTimes, setWaitTimes] = useState({});
 
-  // Fetch configured services from the admin services endpoint
-  useEffect(() => {
+  const fetchServices = () => {
     axios
-      .get("http://localhost:3000/api/admin/services", {
+      .get("http://localhost:3000/api/admin/services/with-counts", {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       .then((res) => setServices(res.data))
       .catch(() => {});
-  }, []);
+  };
 
-
-  // Fetch queue length for each service to calculate wait times
   useEffect(() => {
     if (services.length === 0) return;
 
@@ -41,15 +37,15 @@ const UserHome = () => {
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
             const queueLen = res.data.length;
+            const duration = svc.duration || 5;
             try {
               const waitRes = await fetch(
-                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=5`
+                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=${duration}`
               );
               const waitData = await waitRes.json();
-              const lastEntry = waitData.queue[waitData.queue.length - 1];
-              return { id: svc.id, wait: lastEntry ? lastEntry.estimatedWaitMinutes : 0 };
+              return { id: svc.id, wait: waitData.queue.length * duration };
             } catch {
-              return { id: svc.id, wait: queueLen * 5 };
+              return { id: svc.id, wait: queueLen * duration };
             }
           } catch {
             return { id: svc.id, wait: 0 };
@@ -86,7 +82,7 @@ const UserHome = () => {
       >
         {services.map((svc, idx) => {
           const color = iconColors[idx % iconColors.length];
-          const wait = waitTimes[svc.id] ?? null;
+          const wait = svc.queueCount != null ? svc.queueCount * 5 : null;
           return (
             <Link
               key={svc.id}

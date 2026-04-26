@@ -33,6 +33,7 @@ const QueueStatus = () => {
         myEntries.map(async (entry) => {
           const svc = allServices.find((s) => s.id === entry.serviceId);
           const serviceName = svc ? svc.name : "Unknown Service";
+          const duration = svc?.duration || 5;
 
           try {
             const queueRes = await axios.get(
@@ -41,13 +42,15 @@ const QueueStatus = () => {
             );
             const queue = queueRes.data;
             const position = queue.findIndex((e) => e.id === entry.id) + 1;
-            let estimatedWait = position > 0 ? position * 5 : 0;
+            let estimatedWait = position > 0 ? position * duration : 0;
             try {
               const waitRes = await fetch(
-                `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=5`
+                `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=${duration}`
               );
               const waitData = await waitRes.json();
-              estimatedWait = waitData.estimatedWaitMinutes;
+              if (waitData.estimatedWaitMinutes != null) {
+                estimatedWait = waitData.estimatedWaitMinutes;
+              }
             } catch { /* fall back to position * 5 */ }
 
             let status = "Pending";
@@ -95,9 +98,17 @@ const QueueStatus = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const formatPriority = (p) => {
+    if (!p) return "Low";
+    const lower = p.toLowerCase();
+    if (lower === "mid" || lower === "medium") return "Medium";
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
+
   const priorityBadgeClass = (priority) => {
-    if (priority === "High") return "bg-danger";
-    if (priority === "Medium") return "bg-warning text-dark";
+    const p = (priority || "").toLowerCase();
+    if (p === "high") return "bg-danger";
+    if (p === "mid" || p === "medium") return "bg-warning text-dark";
     return "bg-secondary";
   };
 
@@ -159,7 +170,7 @@ const QueueStatus = () => {
                     <span>
                       Priority:{" "}
                       <span className={`badge ${priorityBadgeClass(q.priority)}`}>
-                        {q.priority}
+                        {formatPriority(q.priority)}
                       </span>
                     </span>
                     <button

@@ -22,26 +22,12 @@ const AdminHome = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const recentActivity = [
-    { id: 1, type: "joined", patient: "Patient P-20489", service: "General Consultation", time: "2 min ago" },
-    { id: 2, type: "served", patient: "Patient P-18821", service: "Lab Work & Blood Tests", time: "5 min ago" },
-    { id: 3, type: "left", patient: "Patient P-20101", service: "Pharmacy Pickup", time: "9 min ago" },
-    { id: 4, type: "served", patient: "Patient P-19943", service: "General Consultation", time: "12 min ago" },
-    { id: 5, type: "joined", patient: "Patient P-20502", service: "Radiology / Imaging", time: "15 min ago" },
-  ];
-
   const totalPatients = apiServices.reduce((acc, s) => acc + (s.queueCount || 0), 0);
   const openServices = apiServices.length;
   const servicesWithQueue = apiServices.filter((s) => s.queueCount > 0);
   const avgWaitAll = servicesWithQueue.length > 0
-    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * 5, 0) / servicesWithQueue.length)
+    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * (s.duration || 5), 0) / servicesWithQueue.length)
     : 0;
-
-  const activityIcon = {
-    joined: { icon: "feather-user-plus", color: "text-primary" },
-    served: { icon: "feather-check-circle", color: "text-success" },
-    left: { icon: "feather-user-minus", color: "text-danger" },
-  };
 
   return (
     <div className="container-fluid py-2">
@@ -55,56 +41,6 @@ const AdminHome = () => {
         <span className="badge bg-danger-subtle text-danger border px-3 py-2" style={{ fontSize: "0.85rem" }}>
           <i className="feather-shield me-1"></i> Admin Access
         </span>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="rounded-3 bg-primary-subtle p-3">
-                <i className="feather-users text-primary" style={{ fontSize: "1.4rem" }}></i>
-              </div>
-              <div>
-                <div className="text-muted small text-uppercase fw-semibold">Total in Queue</div>
-                <div className="fs-4 fw-bold">{totalPatients}</div>
-                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Across all services</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="rounded-3 bg-success-subtle p-3">
-                <i className="feather-check-square text-success" style={{ fontSize: "1.4rem" }}></i>
-              </div>
-              <div>
-                <div className="text-muted small text-uppercase fw-semibold">Open Services</div>
-                <div className="fs-4 fw-bold">{openServices} / {apiServices.length}</div>
-                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Currently active</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="rounded-3 bg-warning-subtle p-3">
-                <i className="feather-clock text-warning" style={{ fontSize: "1.4rem" }}></i>
-              </div>
-              <div>
-                <div className="text-muted small text-uppercase fw-semibold">Avg Wait Time</div>
-                <div className="fs-4 fw-bold">~{avgWaitAll} min</div>
-                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Across open services</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
       </div>
 
       <div className="row g-3">
@@ -153,32 +89,44 @@ const AdminHome = () => {
           </div>
         </div>
 
-        {/* Recent Activity Feed */}
-        <div className="col-lg-4">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-header bg-white">
-              <h6 className="mb-0 fw-bold">
-                <i className="feather-activity me-2 text-success"></i>Recent Activity
-              </h6>
+        {/* Summary Cards */}
+        <div className="col-lg-4 d-flex flex-column gap-3">
+          <div className="card shadow-sm border-0">
+            <div className="card-body d-flex align-items-center gap-3">
+              <div className="rounded-3 bg-primary-subtle p-3">
+                <i className="feather-users text-primary" style={{ fontSize: "1.4rem" }}></i>
+              </div>
+              <div>
+                <div className="text-muted small text-uppercase fw-semibold">Total in Queue</div>
+                <div className="fs-4 fw-bold">{totalPatients}</div>
+                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Across all services</div>
+              </div>
             </div>
-            <div className="card-body p-0">
-              {recentActivity.map((a) => (
-                <div key={a.id} className="d-flex align-items-start gap-3 px-3 py-3 border-bottom">
-                  <i className={`${activityIcon[a.type].icon} ${activityIcon[a.type].color} mt-1`}></i>
-                  <div>
-                    <div className="small fw-semibold">{a.patient}</div>
-                    <div className="text-muted" style={{ fontSize: "0.78rem" }}>
-                      {a.type === "joined" && "Joined"} 
-                      {a.type === "served" && "Served from"} 
-                      {a.type === "left" && "Left"} {a.service}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: "0.72rem" }}>{a.time}</div>
-                  </div>
-                </div>
-              ))}
+          </div>
+
+          <div className="card shadow-sm border-0">
+            <div className="card-body d-flex align-items-center gap-3">
+              <div className="rounded-3 bg-success-subtle p-3">
+                <i className="feather-check-square text-success" style={{ fontSize: "1.4rem" }}></i>
+              </div>
+              <div>
+                <div className="text-muted small text-uppercase fw-semibold">Open Services</div>
+                <div className="fs-4 fw-bold">{openServices} / {apiServices.length}</div>
+                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Currently active</div>
+              </div>
             </div>
-            <div className="card-footer bg-white text-center">
-              <span className="text-muted small">Showing last 5 actions</span>
+          </div>
+
+          <div className="card shadow-sm border-0">
+            <div className="card-body d-flex align-items-center gap-3">
+              <div className="rounded-3 bg-warning-subtle p-3">
+                <i className="feather-clock text-warning" style={{ fontSize: "1.4rem" }}></i>
+              </div>
+              <div>
+                <div className="text-muted small text-uppercase fw-semibold">Avg Wait Time</div>
+                <div className="fs-4 fw-bold">~{avgWaitAll} min</div>
+                <div className="text-muted" style={{ fontSize: "0.78rem" }}>Across open services</div>
+              </div>
             </div>
           </div>
         </div>

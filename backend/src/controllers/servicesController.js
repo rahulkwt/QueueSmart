@@ -6,12 +6,13 @@ import pool from "../db.js";
 export async function getServices(req, res) {
   try {
     const result = await pool.query(
-      "SELECT service_id, service_name, service_description FROM services WHERE service_is_deleted = false"
+      "SELECT service_id, service_name, service_description, service_duration FROM services WHERE service_is_deleted = false"
     );
     const services = result.rows.map((row) => ({
       id: row.service_id,
       name: row.service_name,
       description: row.service_description,
+      duration: row.service_duration,
     }));
     return res.status(200).json(services);
   } catch (err) {
@@ -26,7 +27,7 @@ export async function getServices(req, res) {
 export async function getServicesWithCounts(req, res) {
   try {
     const result = await pool.query(
-      `SELECT s.service_id, s.service_name, s.service_description,
+      `SELECT s.service_id, s.service_name, s.service_description, s.service_duration,
               COUNT(e.entry_id) FILTER (WHERE e.queue_entry_status = 'pending') AS queue_count
        FROM services s
        LEFT JOIN queue_entry e ON e.service_id = s.service_id
@@ -37,6 +38,7 @@ export async function getServicesWithCounts(req, res) {
       id: row.service_id,
       name: row.service_name,
       description: row.service_description,
+      duration: row.service_duration,
       queueCount: parseInt(row.queue_count),
     }));
     return res.status(200).json(services);
