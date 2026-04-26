@@ -98,6 +98,16 @@ const QueueManagement = () => {
       });
   };
 
+  const priorityBadge = (p) => {
+    if (!p) return <span className="badge bg-secondary">Low</span>;
+    const lower = p.toLowerCase();
+    if (lower === "high") return <span className="badge bg-danger">High</span>;
+    if (lower === "mid" || lower === "medium") return <span className="badge bg-warning text-dark">Medium</span>;
+    return <span className="badge bg-secondary">Low</span>;
+  };
+
+  const selectedServiceName = services.find((s) => s.id === selectedService)?.name ?? "";
+
   return (
     <div className="">
       <h2 className="mb-4">Queue Management</h2>
@@ -164,11 +174,65 @@ const QueueManagement = () => {
         )}
       </div>
 
-      {/* Buttons */}
-      <div className="d-flex gap-3">
-        <button className="btn btn-success" onClick={serveNext}>
-          Serve Next User
-        </button>
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-header bg-white">
+          <h6 className="mb-0 fw-bold">{selectedServiceName}</h6>
+        </div>
+
+        <div className="card-body p-0">
+          {queue.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <i className="feather-inbox" style={{ fontSize: "2rem" }}></i>
+              <p className="mt-2 mb-0">No patients in queue for {selectedServiceName}</p>
+            </div>
+          ) : (
+            <table className="table table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: 60 }}>#</th>
+                  <th>Patient</th>
+                  <th>Priority</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queue.map((entry, index) => (
+                  <tr key={entry.id} className="align-middle">
+                    <td className="fw-bold text-muted">{index + 1}</td>
+                    <td>
+                      <div className="fw-semibold">{entry.name}</div>
+                    </td>
+                    <td>{priorityBadge(entry.priority)}</td>
+                    <td className="text-end">
+                      <button
+                        className="btn btn-sm btn-outline-secondary me-2"
+                        onClick={() => moveUp(entry.id)}
+                        disabled={index === 0}
+                        title="Move up"
+                      >
+                        <i className="feather-arrow-up"></i>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => removeUser(entry.id)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {queue.length > 0 && (
+          <div className="card-footer bg-white">
+            <button className="btn btn-primary" onClick={serveNext}>
+              <i className="feather-check me-2"></i>Serve Next Patient
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

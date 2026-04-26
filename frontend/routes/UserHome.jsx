@@ -15,20 +15,16 @@ const iconColors = [
 const UserHome = () => {
   const { user } = useAuth();
   const [services, setServices] = useState([]);
-  const [waitTimes, setWaitTimes] = useState({});
 
-  // Fetch configured services from the admin services endpoint
-  useEffect(() => {
+  const fetchServices = () => {
     axios
-      .get("http://localhost:3000/api/admin/services", {
+      .get("http://localhost:3000/api/admin/services/with-counts", {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       .then((res) => setServices(res.data))
       .catch(() => {});
-  }, []);
+  };
 
-
-  // Fetch queue length for each service to calculate wait times
   useEffect(() => {
     if (services.length === 0) return;
 
@@ -86,7 +82,7 @@ const UserHome = () => {
       >
         {services.map((svc, idx) => {
           const color = iconColors[idx % iconColors.length];
-          const wait = waitTimes[svc.id] ?? null;
+          const wait = svc.queueCount != null ? svc.queueCount * 5 : null;
           return (
             <Link
               key={svc.id}

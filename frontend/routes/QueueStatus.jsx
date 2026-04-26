@@ -48,8 +48,10 @@ const QueueStatus = () => {
                 `http://localhost:3000/api/queue/${entry.serviceId}/wait-time?entryId=${entry.id}&avgDuration=${duration}`
               );
               const waitData = await waitRes.json();
-              estimatedWait = waitData.estimatedWaitMinutes;
-            } catch { /* fall back to position * duration */ }
+              if (waitData.estimatedWaitMinutes != null) {
+                estimatedWait = waitData.estimatedWaitMinutes;
+              }
+            } catch { /* fall back to position * 5 */ }
 
             let status = "Pending";
             if (position === 1) status = "Almost Ready";
@@ -96,9 +98,17 @@ const QueueStatus = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const formatPriority = (p) => {
+    if (!p) return "Low";
+    const lower = p.toLowerCase();
+    if (lower === "mid" || lower === "medium") return "Medium";
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
+
   const priorityBadgeClass = (priority) => {
-    if (priority === "High") return "bg-danger";
-    if (priority === "Medium") return "bg-warning text-dark";
+    const p = (priority || "").toLowerCase();
+    if (p === "high") return "bg-danger";
+    if (p === "mid" || p === "medium") return "bg-warning text-dark";
     return "bg-secondary";
   };
 
@@ -160,7 +170,7 @@ const QueueStatus = () => {
                     <span>
                       Priority:{" "}
                       <span className={`badge ${priorityBadgeClass(q.priority)}`}>
-                        {q.priority}
+                        {formatPriority(q.priority)}
                       </span>
                     </span>
                     <button

@@ -1,11 +1,15 @@
 import express from "express";
 import { getServices, getServicesWithCounts, createService, updateService, deleteService } from "../controllers/servicesController.js";
+import { getReports } from "../controllers/reportsController.js";
 import { verifyToken, verifyAdmin } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
 // GET /api/admin/services/with-counts — public: services with live queue counts
 router.get("/services/with-counts", getServicesWithCounts);
+
+// GET /api/admin/reports — protected: filtered queue entry report
+router.get("/reports", verifyToken, verifyAdmin, getReports);
 
 // GET /api/admin/services — public: anyone can view configured services
 router.get("/services", getServices);

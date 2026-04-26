@@ -65,7 +65,7 @@ const UserHistory = () => {
                 </th>
                 {/*rest of table head columns*/}
                 <th className="text-start">Service type</th>
-                <th className="text-start">Doctor</th>
+                <th className="text-start">Priority</th>
                 <th className="text-start">Date</th>
                 <th className="text-start">Status</th>
               </tr>
@@ -93,7 +93,9 @@ const UserHistory = () => {
                       <span className="fw-bold text-dark">{user.service}</span>
                     </td>
                     <td className="border-bottom-0">
-                      <span className="text-dark">{user.doctor}</span>
+                      <span className="text-dark">
+                        {(user.priority || "").toLowerCase() === "mid" ? "Medium" : (user.priority || "Low").charAt(0).toUpperCase() + (user.priority || "Low").slice(1)}
+                      </span>
                     </td>
                     <td className="border-bottom-0">
                       <span className="text-dark">{user.date}</span>
@@ -114,11 +116,10 @@ const UserHistory = () => {
                     </td>
                   </tr>
                   <tr>
-                    {/*row below gives a doctor's notes*/}
-                    <td className="border-top-0"></td> 
+                    <td className="border-top-0"></td>
                     <td colSpan="4" className="pt-0 pb-3 border-top-0">
                       <div className="text-muted small">
-                        <strong>Notes: </strong>{user.notes}
+                        <strong>Position: </strong>#{user.position}
                       </div>
                     </td>
                   </tr>
