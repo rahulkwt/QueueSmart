@@ -1,5 +1,8 @@
 import pool from "../db.js";
 
+// Maps DB priority values (lowercase) to the format computeEffectiveQueue expects
+const PRIORITY_MAP = { low: "Low", mid: "Medium", high: "High" };
+
 /**
  * Builds the effective queue order by letting High-priority entries
  * skip ahead of up to 2 Low or Medium-priority entries that are in front of them.
@@ -40,7 +43,7 @@ export function computeEffectiveQueue(queue) {
  * GET /api/queue/:serviceId/wait-time?avgDuration=10&entryId=xxx
  *
  * Computes estimated wait times for a service's queue, factoring in
- * priority-based reordering (High skips up to 2 Low entries).
+ * priority-based reordering (High skips up to 2 Low/Medium entries).
  *
  * Query params:
  *   avgDuration - average service duration in minutes (default 10)
@@ -60,36 +63,32 @@ export async function getWaitTime(req, res) {
 
   try {
     const result = await pool.query(
-      `SELECT e.entry_id, e.queue_entry_position, e.queue_priority, u.user_full_name,
-              COALESCE(s.service_duration, $2) AS service_duration
+      `SELECT e.entry_id, e.queue_priority, u.user_full_name
        FROM queue_entry e
        JOIN users u ON u.user_id = e.user_id
-       JOIN services s ON s.service_id = e.service_id
        WHERE e.service_id = $1 AND e.queue_entry_status = 'pending'
        ORDER BY e.queue_entry_position ASC`,
-      [serviceId, duration]
+      [serviceId]
     );
 
     const serviceQueue = result.rows.map((row) => ({
-      id: row.entry_id,
+      id: String(row.entry_id),
       name: row.user_full_name,
-      priority: row.queue_priority,
-      serviceDuration: parseInt(row.service_duration),
+      priority: PRIORITY_MAP[row.queue_priority] || row.queue_priority,
     }));
 
     const effectiveQueue = computeEffectiveQueue(serviceQueue);
-    const avgDur = effectiveQueue[0]?.serviceDuration ?? duration;
 
     if (entryId) {
-      const position = effectiveQueue.findIndex((e) => String(e.id) === String(entryId));
+      const position = effectiveQueue.findIndex((e) => e.id === entryId);
       if (position === -1) {
         return res.status(404).json({ error: "Entry not found in this service's queue." });
       }
       return res.json({
         entryId,
         position,
-        estimatedWaitMinutes: position * avgDur,
-        avgDuration: avgDur,
+        estimatedWaitMinutes: position * duration,
+        avgDuration: duration,
       });
     }
 
@@ -98,10 +97,10 @@ export async function getWaitTime(req, res) {
       name: entry.name,
       priority: entry.priority,
       position,
-      estimatedWaitMinutes: position * avgDur,
+      estimatedWaitMinutes: position * duration,
     }));
 
-    return res.json({ serviceId, avgDuration: avgDur, queue: waitTimes });
+    return res.json({ serviceId, avgDuration: duration, queue: waitTimes });
   } catch (err) {
     console.error("getWaitTime error:", err);
     return res.status(500).json({ error: "Internal server error." });

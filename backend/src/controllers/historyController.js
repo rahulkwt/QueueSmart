@@ -1,83 +1,123 @@
 import pool from "../db.js";
 
+const VALID_STATUSES = ["pending", "completed", "cancelled"];
+
+/**
+ * Formats a Date/timestamp into MM-DD-YYYY for the frontend history table.
+ */
+function formatDate(ts) {
+  const d = new Date(ts);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${mm}-${dd}-${yyyy}`;
+}
+
+/**
+ * Maps a DB row from the history table to the API response shape expected by
+ * UserHistory.jsx (service, doctor, date, status, notes).
+ * "doctor" is not tracked in the DB so it is returned as null.
+ */
+function rowToEntry(row) {
+  return {
+    id: row.history_id,
+    userId: row.user_id,
+    serviceId: row.service_id,
+    service: row.history_service_name,
+    doctor: null,
+    date: formatDate(row.history_time),
+    notes: row.history_notes || null,
+    status: row.history_status.charAt(0).toUpperCase() + row.history_status.slice(1), // "pending" → "Pending"
+  };
+}
+
+/**
+ * GET /api/history
+ * Returns all history records for the authenticated user.
+ */
 export const getHistory = async (req, res) => {
   const userId = req.user.id;
   try {
     const result = await pool.query(
-      `SELECT e.entry_id, e.queue_entry_status, e.queue_entry_position, e.queue_priority, e.queue_join_time,
-              s.service_name
-       FROM queue_entry e
-       JOIN services s ON s.service_id = e.service_id
-       WHERE e.user_id = $1
-       ORDER BY e.queue_join_time DESC`,
+      "SELECT * FROM history WHERE user_id = $1 ORDER BY history_time DESC",
       [userId]
     );
-    const history = result.rows.map((row) => ({
-      id: row.entry_id,
-      service: row.service_name,
-      status: row.queue_entry_status.charAt(0).toUpperCase() + row.queue_entry_status.slice(1),
-      position: row.queue_entry_position,
-      priority: row.queue_priority,
-      date: new Date(row.queue_join_time).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }),
-    }));
-    res.json(history);
+    res.json(result.rows.map(rowToEntry));
   } catch (err) {
     console.error("getHistory error:", err);
-    res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
-export const getHistoryByUser = (req, res) => {
+/**
+ * GET /api/history/:userId
+ * Returns all history records for a specific user (admin use).
+ */
+export const getHistoryByUser = async (req, res) => {
   const { userId } = req.params;
   if (!userId) {
     return res.status(400).json({ error: "userId is required." });
   }
-  res.json(readHistory().filter((entry) => entry.userId === userId));
+  try {
+    const result = await pool.query(
+      "SELECT * FROM history WHERE user_id = $1 ORDER BY history_time DESC",
+      [userId]
+    );
+    res.json(result.rows.map(rowToEntry));
+  } catch (err) {
+    console.error("getHistoryByUser error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
 };
 
-export const addHistory = (req, res) => {
+/**
+ * POST /api/user/history
+ * Creates a new queue-participation history record.
+ * Accepts { service, serviceId, status } from QueueScreen when the user joins.
+ * "service" is the human-readable service name stored for display.
+ * "status" must be one of: pending, completed, cancelled (case-insensitive).
+ */
+export const addHistory = async (req, res) => {
   const userId = req.user?.id || req.body.userId;
-  const { service, serviceId, date, notes, status } = req.body;
-  const doctor = req.body.doctor || "";
+  const { service, serviceId, status } = req.body;
 
-  if (!userId || !service || !date || !status) {
-    const missing = ["userId", "service", "date", "status"].find((f) => {
+  if (!userId || !service || !serviceId || !status) {
+    const missing = ["userId", "service", "serviceId", "status"].find((f) => {
       if (f === "userId") return !userId;
       return !req.body[f];
     });
     return res.status(400).json({ error: `${missing} is required.` });
   }
 
-  if (service.length > 100) {
-    return res.status(400).json({ error: "service exceeds max length of 100." });
+  if (service.length > 255) {
+    return res.status(400).json({ error: "service name exceeds max length of 255." });
   }
 
-  if (doctor.length > 100) {
-    return res.status(400).json({ error: "doctor exceeds max length of 100." });
-  }
-
-  if (!DATE_REGEX.test(date)) {
-    return res.status(400).json({ error: "date must be in MM-DD-YYYY format." });
-  }
-
-  if (!VALID_STATUSES.includes(status)) {
+  const normalizedStatus = status.toLowerCase();
+  if (!VALID_STATUSES.includes(normalizedStatus)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
   }
 
-  if (notes && notes.length > 300) {
-    return res.status(400).json({ error: "notes exceeds max length of 300." });
+  try {
+    const result = await pool.query(
+      `INSERT INTO history (user_id, service_id, history_service_name, history_status)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [userId, serviceId, service, normalizedStatus]
+    );
+    res.status(201).json(rowToEntry(result.rows[0]));
+  } catch (err) {
+    console.error("addHistory error:", err);
+    res.status(500).json({ error: "Internal server error." });
   }
-
-  const history = readHistory();
-  const maxId = history.reduce((max, e) => Math.max(max, e.id), 0);
-  const newEntry = { id: maxId + 1, userId, service, doctor, date, notes: notes || "", status };
-  if (serviceId) newEntry.serviceId = serviceId;
-  history.push(newEntry);
-  writeHistory(history);
-  res.status(201).json(newEntry);
 };
 
-export const updateHistoryEntry = (req, res) => {
+/**
+ * PATCH /api/user/history/:id
+ * Updates the status of a history record the authenticated user owns.
+ * QueueScreen sends { status: "Completed" } or { status: "Cancelled" } — accepted case-insensitively.
+ */
+export const updateHistoryEntry = async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
   const { status } = req.body;
@@ -86,26 +126,41 @@ export const updateHistoryEntry = (req, res) => {
     return res.status(400).json({ error: "id must be a positive integer." });
   }
 
-  if (!status || !VALID_STATUSES.includes(status)) {
+  const normalizedStatus = status ? status.toLowerCase() : null;
+  if (!normalizedStatus || !VALID_STATUSES.includes(normalizedStatus)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}.` });
   }
 
-  const history = readHistory();
-  const index = history.findIndex((entry) => entry.id === numId);
-  if (index === -1) {
-    return res.status(404).json({ error: `Record with id ${id} not found.` });
-  }
+  try {
+    const check = await pool.query(
+      "SELECT user_id FROM history WHERE history_id = $1",
+      [numId]
+    );
 
-  if (history[index].userId !== req.user.id) {
-    return res.status(403).json({ error: "Forbidden." });
-  }
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: `Record with id ${id} not found.` });
+    }
 
-  history[index].status = status;
-  writeHistory(history);
-  res.json(history[index]);
+    if (check.rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ error: "Forbidden." });
+    }
+
+    const result = await pool.query(
+      "UPDATE history SET history_status = $1 WHERE history_id = $2 RETURNING *",
+      [normalizedStatus, numId]
+    );
+    res.json(rowToEntry(result.rows[0]));
+  } catch (err) {
+    console.error("updateHistoryEntry error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
 };
 
-export const deleteHistory = (req, res) => {
+/**
+ * DELETE /api/history/:id
+ * Deletes a history record by ID.
+ */
+export const deleteHistory = async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
 
@@ -116,13 +171,19 @@ export const deleteHistory = (req, res) => {
     return res.status(400).json({ error: "id must be a positive integer." });
   }
 
-  const history = readHistory();
-  const index = history.findIndex((entry) => entry.id === numId);
-  if (index === -1) {
-    return res.status(404).json({ error: `Record with id ${id} not found.` });
-  }
+  try {
+    const result = await pool.query(
+      "DELETE FROM history WHERE history_id = $1 RETURNING *",
+      [numId]
+    );
 
-  const [deleted] = history.splice(index, 1);
-  writeHistory(history);
-  res.json({ deleted });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: `Record with id ${id} not found.` });
+    }
+
+    res.json({ deleted: rowToEntry(result.rows[0]) });
+  } catch (err) {
+    console.error("deleteHistory error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
 };

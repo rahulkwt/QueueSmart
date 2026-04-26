@@ -26,10 +26,39 @@ const UserHome = () => {
   };
 
   useEffect(() => {
-    fetchServices();
-    const interval = setInterval(fetchServices, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (services.length === 0) return;
+
+    const fetchAll = async () => {
+      const results = await Promise.all(
+        services.map(async (svc) => {
+          try {
+            const res = await axios.get(
+              `http://localhost:3000/api/queue/${svc.id}`,
+              { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            const queueLen = res.data.length;
+            try {
+              const waitRes = await fetch(
+                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=5`
+              );
+              const waitData = await waitRes.json();
+              const lastEntry = waitData.queue[waitData.queue.length - 1];
+              return { id: svc.id, wait: lastEntry ? lastEntry.estimatedWaitMinutes : 0 };
+            } catch {
+              return { id: svc.id, wait: queueLen * 5 };
+            }
+          } catch {
+            return { id: svc.id, wait: 0 };
+          }
+        })
+      );
+      const map = {};
+      results.forEach(({ id, wait }) => { map[id] = wait; });
+      setWaitTimes(map);
+    };
+
+    fetchAll();
+  }, [services]);
 
   return (
     <div

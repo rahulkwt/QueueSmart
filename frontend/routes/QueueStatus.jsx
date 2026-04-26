@@ -36,7 +36,7 @@ const QueueStatus = () => {
 
           try {
             const queueRes = await axios.get(
-              `http://localhost:3000/api/admin/queue/${entry.serviceId}`,
+              `http://localhost:3000/api/queue/${entry.serviceId}`,
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
             const queue = queueRes.data;

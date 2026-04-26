@@ -12,12 +12,6 @@ const JoinQueue = () => {
   const [serviceId, setServiceId] = useState(null);
   const [joined, setJoined] = useState(false);
   const joinedRef = useRef(false);
-  // Track the pending history entry created on join so we can update it when the session ends.
-  // Persisted in localStorage so it survives page refreshes.
-  const [currentHistoryId, setCurrentHistoryId] = useState(() => {
-    const stored = localStorage.getItem(`pendingHistoryId_${decodeURIComponent(service)}`);
-    return stored ? parseInt(stored, 10) : null;
-  });
   const [priority, setPriority] = useState("Low");
   const [position, setPosition] = useState(null);
   const [estimatedWait, setEstimatedWait] = useState(null);
@@ -34,23 +28,6 @@ const JoinQueue = () => {
   useEffect(() => {
     joinedRef.current = joined;
   }, [joined]);
-
-  const formatHistoryDate = (d) => {
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${mm}-${dd}-${yyyy}`;
-  };
-
-  const saveHistoryId = (id) => {
-    const key = `pendingHistoryId_${decodedService}`;
-    if (id != null) {
-      localStorage.setItem(key, String(id));
-    } else {
-      localStorage.removeItem(key);
-    }
-    setCurrentHistoryId(id);
-  };
 
   // Step 1: Look up serviceId by matching service name from admin services list
   useEffect(() => {
@@ -69,7 +46,7 @@ const JoinQueue = () => {
   const fetchQueue = async (svcId) => {
     if (!svcId) return 0;
     try {
-      const res = await axios.get(`http://localhost:3000/api/admin/queue/${svcId}`, {
+      const res = await axios.get(`http://localhost:3000/api/queue/${svcId}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
       const queue = res.data;
@@ -93,10 +70,8 @@ const JoinQueue = () => {
           setEstimatedWait(pos * 5);
         }
       } else if (joinedRef.current) {
-        // User was served or removed by admin.
-        // The backend already updated the Pending history entry (Completed or Cancelled).
+        // User was served or removed by admin — backend updated history automatically.
         joinedRef.current = false;
-        saveHistoryId(null);
         setJoined(false);
         setQueueId(null);
         setPosition(null);
@@ -151,16 +126,6 @@ const JoinQueue = () => {
       almostReadyFiredRef.current = false;
       localStorage.removeItem(`almostReadyFired_${decodedService}`);
       window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
-      // Create a Pending history entry so the visit appears in history while in queue.
-      // The backend will update it to Completed (served) or Cancelled (removed/left).
-      try {
-        const histRes = await axios.post(
-          "http://localhost:3000/api/user/history",
-          { service: decodedService, serviceId, date: formatHistoryDate(new Date()), status: "Pending" },
-          { headers: { Authorization: `Bearer ${user.token}` } }
-        );
-        saveHistoryId(histRes.data.id);
-      } catch { /* non-critical */ }
       await fetchQueue(serviceId);
     } catch (err) {
       console.error("Error joining queue:", err);
@@ -177,21 +142,10 @@ const JoinQueue = () => {
         `http://localhost:3000/api/queue/${serviceId}/${queueId}/leave`,
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      // Update the Pending history entry to Cancelled (backend also does this as a safety net).
-      if (currentHistoryId != null) {
-        try {
-          await axios.patch(
-            `http://localhost:3000/api/user/history/${currentHistoryId}`,
-            { status: "Cancelled" },
-            { headers: { Authorization: `Bearer ${user.token}` } }
-          );
-        } catch { /* non-critical */ }
-      }
     } catch (err) {
       console.error("Error leaving queue:", err);
     } finally {
       joinedRef.current = false;
-      saveHistoryId(null);
       setJoined(false);
       setQueueId(null);
       setPosition(null);
