@@ -1,6 +1,7 @@
 import { Outlet, Navigate } from "react-router-dom";
 import Sidebar from "../utils/Sidebar";
 import Navbar from "../utils/Navbar";
+import AIChatWidget from "../utils/AIChatWidget";
 import { useAuth } from "../context/AuthContext";
 
 const PortalLayout = () => {
@@ -46,6 +47,7 @@ const PortalLayout = () => {
           </div>
         </div>
       </div>
+      <AIChatWidget isAdmin={isAdmin} />
     </>
   );
 };
