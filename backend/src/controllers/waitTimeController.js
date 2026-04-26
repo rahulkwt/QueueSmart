@@ -15,18 +15,23 @@ export function computeEffectiveQueue(queue) {
   const effective = [...queue];
 
   for (let i = 0; i < effective.length; i++) {
-    if (effective[i].priority !== "High") continue;
-
-    let skipped = 0;
-    let pos = i;
-
-    while (pos > 0 && skipped < 2) {
-      if (effective[pos - 1].priority === "Low" || effective[pos - 1].priority === "Medium") {
-        [effective[pos - 1], effective[pos]] = [effective[pos], effective[pos - 1]];
-        pos--;
-        skipped++;
-      } else {
-        break;
+    const p = effective[i].priority.toLowerCase();
+    if (p === "high") {
+      let skipped = 0;
+      let pos = i;
+      while (pos > 0 && skipped < 2) {
+        const ahead = effective[pos - 1].priority.toLowerCase();
+        if (ahead === "low" || ahead === "mid" || ahead === "medium") {
+          [effective[pos - 1], effective[pos]] = [effective[pos], effective[pos - 1]];
+          pos--;
+          skipped++;
+        } else {
+          break;
+        }
+      }
+    } else if (p === "mid" || p === "medium") {
+      if (i > 0 && effective[i - 1].priority.toLowerCase() === "low") {
+        [effective[i - 1], effective[i]] = [effective[i], effective[i - 1]];
       }
     }
   }

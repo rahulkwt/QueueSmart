@@ -98,6 +98,15 @@ const Sidebar = ({ role }) => {
                     <span className="nxl-mtext">Service Management</span>
                   </Link>
                 </li>
+
+                <li className="nxl-item">
+                  <Link to="/portal/admin/data-reports" className="nxl-link">
+                    <span className="nxl-micon">
+                      <i className="feather-bar-chart-2"></i>
+                    </span>
+                    <span className="nxl-mtext">Data Reports</span>
+                  </Link>
+                </li>
               </>
             )}
 
