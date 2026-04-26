@@ -1,5 +1,5 @@
 import pool from "../db.js";
-import { callGemini } from "../../gemini/geminiService.js";
+import { callGroq } from "../../llama/llamaService.js";
 
 async function getDbContext() {
   const { rows } = await pool.query(`
@@ -29,7 +29,7 @@ export async function handleChat(req, res) {
 
   try {
     const dbContext = await getDbContext();
-    const reply = await callGemini(message.trim(), history, req.user.role, dbContext);
+    const reply = await callGroq(message.trim(), history, req.user.role, dbContext);
     res.json({ reply });
   } catch (err) {
     console.error("AI chat error:", err.message);

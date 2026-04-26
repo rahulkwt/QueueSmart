@@ -47,7 +47,7 @@ const PortalLayout = () => {
           </div>
         </div>
       </div>
-      <AIChatWidget isAdmin={isAdmin} />}
+      <AIChatWidget isAdmin={isAdmin} />
     </>
   );
 };

@@ -13,7 +13,7 @@ function welcomeMessage(isAdmin) {
     text: isAdmin
       ? "Ask me about queue status, which service needs attention, or how to manage the system."
       : "Ask me about your queue status or how to use the system.",
-    system: true, // hardcoded — not sent to Gemini as conversation history
+    system: true, 
   };
 }
 
@@ -60,10 +60,7 @@ const AIChatWidget = ({ isAdmin }) => {
     // Filter out system messages — they are hardcoded, not real AI turns
     const history = messages
       .filter((m) => !m.system)
-      .map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        text: m.text,
-      }));
+      .map((m) => ({ role: m.role, text: m.text }));
 
     try {
       const res = await fetch(API_URL, {
