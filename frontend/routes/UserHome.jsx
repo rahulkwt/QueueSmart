@@ -37,15 +37,15 @@ const UserHome = () => {
               { headers: { Authorization: `Bearer ${user.token}` } }
             );
             const queueLen = res.data.length;
+            const duration = svc.duration || 5;
             try {
               const waitRes = await fetch(
-                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=5`
+                `http://localhost:3000/api/queue/${svc.id}/wait-time?avgDuration=${duration}`
               );
               const waitData = await waitRes.json();
-              const lastEntry = waitData.queue[waitData.queue.length - 1];
-              return { id: svc.id, wait: lastEntry ? lastEntry.estimatedWaitMinutes : 0 };
+              return { id: svc.id, wait: waitData.queue.length * duration };
             } catch {
-              return { id: svc.id, wait: queueLen * 5 };
+              return { id: svc.id, wait: queueLen * duration };
             }
           } catch {
             return { id: svc.id, wait: 0 };

@@ -10,9 +10,27 @@ Write in the terminal: `npm install`.
 Write in one terminal: `npm run dev`.
 Write in another terminal: `node ./backend/server.js` or `cd backend; node server.js`.
 
-# running unit tests
+# running tests
 
-Write in the terminal: `cd backend; npm run test`.
+All test commands run from the repo root.
+
+The test suite has two layers:
+
+- **Unit tests** — controller logic with the database mocked out. Fast (~300ms), no external dependencies.
+- **Integration tests** — real SQL against a separate `queue_smart_test_db` Postgres database. Verifies queries, schema, and end-to-end behavior. Requires Postgres running on `localhost:5432`.
+
+| Command | What it does |
+|---|---|
+| `npm test` | Runs the unit suite only. Use during development. |
+| `npm run test:watch` | Re-runs unit tests on file changes. |
+| `npm run test:verbose` | Unit tests with every individual test name listed. |
+| `npm run test:coverage` | Unit tests + coverage table + HTML report at `coverage/index.html`. |
+| `npm run test:integration` | Runs the integration suite. Auto-creates and seeds `queue_smart_test_db` before each run, so your dev `queue_smart_db` is never touched. |
+| `npm run test:integration:verbose` | Integration tests with every test name listed. |
+| `npm run test:integration:coverage` | Integration tests + coverage. |
+| `npm run test:all` | **Canonical "run everything" command.** Unit + integration, back-to-back. Use this before submitting or pushing. |
+
+Integration tests use the same `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` from `.env` but override `DB_NAME` to `queue_smart_test_db` so they never collide with development data.
 
 # profiles to log in
 
@@ -46,10 +64,10 @@ type `queue_smart_db` as the database) or
 
 For Windows, you need Git Bash or something that can run bash scripts.
 On Mac you can write the scripts as is.
-For the first time setting up, run `./database/reset_db.sh migrate`.
-To fill the database, run `./database/seed_db.sh`.
+For the first time setting up, run `./database/scripts/reset_db.sh migrate`.
+To fill the database, run `./database/scripts/seed_db.sh`.
 
-For resetting (like wanting to go back to initial state) run `./database/reset_db.sh reset`
+For resetting (like wanting to go back to initial state) run `./database/scripts/reset_db.sh reset`
 and refill the database.
 
 Server is already integrated with database so once the database is set up simply run

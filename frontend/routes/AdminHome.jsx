@@ -26,7 +26,7 @@ const AdminHome = () => {
   const openServices = apiServices.length;
   const servicesWithQueue = apiServices.filter((s) => s.queueCount > 0);
   const avgWaitAll = servicesWithQueue.length > 0
-    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * 5, 0) / servicesWithQueue.length)
+    ? Math.round(servicesWithQueue.reduce((acc, s) => acc + s.queueCount * (s.duration || 5), 0) / servicesWithQueue.length)
     : 0;
 
   return (
