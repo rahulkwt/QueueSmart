@@ -146,7 +146,7 @@ const RegistrationPage = () => {
 
             <div className="mt-5 text-muted">
               <span>Already have an account?</span>{" "}
-              <Link to="/login" className="fw-bold">
+              <Link to="/login" className="fw-bold text-primary">
                 Login
               </Link>
             </div>

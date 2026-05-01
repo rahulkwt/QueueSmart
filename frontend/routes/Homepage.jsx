@@ -20,7 +20,10 @@ const Homepage = () => {
 
                         {/* Slide 1 */}
                         <div className="carousel-item active">
-                            <div className="single-slider slider-height d-flex align-items-center">
+                            <div
+                                className="single-slider slider-height d-flex align-items-center"
+                                style={{ backgroundImage: "url('/frontend/public/assets/images/gallery/gallery3.png')", backgroundSize: "cover", backgroundPosition: "center" }}
+                            >
                                 <div className="container">
                                     <div className="row">
                                         <div className="col-xl-7 col-lg-9 col-md-8 col-sm-9">
@@ -52,7 +55,10 @@ const Homepage = () => {
 
                         {/* Slide 2 */}
                         <div className="carousel-item">
-                            <div className="single-slider slider-height d-flex align-items-center">
+                            <div
+                                className="single-slider slider-height d-flex align-items-center"
+                                style={{ backgroundImage: "url('/frontend/public/assets/images/gallery/blog2.png')", backgroundSize: "cover", backgroundPosition: "center" }}
+                            >
                                 <div className="container">
                                     <div className="row">
                                         <div className="col-xl-7 col-lg-9 col-md-8 col-sm-9">

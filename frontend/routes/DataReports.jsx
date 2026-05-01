@@ -79,6 +79,58 @@ const DataReports = () => {
     fetchReport(reset);
   };
 
+  /**
+   * Builds a CSV string from the current filtered entries and triggers a browser download.
+   * Uses the native Blob API — no dependencies required.
+   */
+  const exportCSV = () => {
+    const timestamp = new Date().toLocaleString("en-US");
+    const serviceName = filters.serviceId
+      ? (services.find((s) => String(s.id) === String(filters.serviceId))?.name ?? "Unknown")
+      : "All";
+    const statusLabel = filters.status
+      ? filters.status.charAt(0).toUpperCase() + filters.status.slice(1)
+      : "All";
+
+    const meta = [
+      ["QueueSmart Data Report"],
+      ["Generated:", timestamp],
+      [],
+      ["Filters"],
+      ["From", filters.from, "To", filters.to, "Service", serviceName, "Status", statusLabel],
+      [],
+      ["Summary"],
+      ["Total", "Completed", "Cancelled", "Pending"],
+      [summary.total, summary.completed, summary.cancelled, summary.pending],
+      [],
+      ["Patient", "Service", "Priority", "Status", "Date", "Time"],
+    ];
+
+    const rows = entries.map((e) => {
+      const dt = new Date(e.joinedAt);
+      return [
+        e.patient,
+        e.service,
+        formatPriority(e.priority),
+        e.status.charAt(0).toUpperCase() + e.status.slice(1),
+        dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      ];
+    });
+
+    const csv = [...meta, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `queue-report_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container-fluid py-2">
 
@@ -88,9 +140,19 @@ const DataReports = () => {
           <h4 className="mb-0 fw-bold">Data Reports</h4>
           <small className="text-muted">Filter and explore queue activity</small>
         </div>
-        <span className="badge bg-danger-subtle text-danger border px-3 py-2" style={{ fontSize: "0.85rem" }}>
-          <i className="feather-shield me-1"></i> Admin Access
-        </span>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-outline-success btn-sm"
+            onClick={exportCSV}
+            disabled={entries.length === 0}
+            title="Download filtered results as CSV"
+          >
+            <i className="me-1"></i> Export CSV
+          </button>
+          <span className="badge bg-danger-subtle text-danger border px-3 py-2" style={{ fontSize: "0.85rem" }}>
+            <i className="feather-shield me-1"></i> Admin Access
+          </span>
+        </div>
       </div>
 
       {/* Filters */}
@@ -99,22 +161,22 @@ const DataReports = () => {
           <div className="row g-3 align-items-end">
             <div className="col-sm-6 col-md-3">
               <label className="form-label small fw-semibold text-muted text-uppercase">From</label>
-              <input type="date" className="form-control" value={filters.from} onChange={(e) => set("from", e.target.value)} />
+              <input type="date" className="form-control" style={{ height: "45px" }} value={filters.from} onChange={(e) => set("from", e.target.value)} />
             </div>
             <div className="col-sm-6 col-md-3">
               <label className="form-label small fw-semibold text-muted text-uppercase">To</label>
-              <input type="date" className="form-control" value={filters.to} onChange={(e) => set("to", e.target.value)} />
+              <input type="date" className="form-control" style={{ height: "45px" }} value={filters.to} onChange={(e) => set("to", e.target.value)} />
             </div>
             <div className="col-sm-6 col-md-2">
               <label className="form-label small fw-semibold text-muted text-uppercase">Service</label>
-              <select className="form-select" value={filters.serviceId} onChange={(e) => set("serviceId", e.target.value)}>
+              <select className="form-select" style={{ height: "45px" }} value={filters.serviceId} onChange={(e) => set("serviceId", e.target.value)}>
                 <option value="">All Services</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div className="col-sm-6 col-md-2">
               <label className="form-label small fw-semibold text-muted text-uppercase">Status</label>
-              <select className="form-select" value={filters.status} onChange={(e) => set("status", e.target.value)}>
+              <select className="form-select" style={{ height: "45px" }} value={filters.status} onChange={(e) => set("status", e.target.value)}>
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="completed">Completed</option>
