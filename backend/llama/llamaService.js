@@ -1,3 +1,5 @@
+import { markdownToHtml } from "./markdownToHtml.js";
+
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const AI_MODEL = "llama-3.1-8b-instant";
 
@@ -10,15 +12,20 @@ function buildSystemPrompt(role, dbContext) {
   return `You are QueueSmart AI, a helpful assistant embedded in QueueSmart, a hospital queue management system.
 ${roleSection}
 
-Current system state (live data):
+Live system data (use this to answer questions accurately):
 ${dbContext}
 
 Guidelines:
-- Be concise and actionable — one or two sentences when possible.
-- When asked which service needs attention, rank by pending count from the live data above.
-- Do not invent queue numbers or data not shown above.
+- Be concise but substantive — 2–4 sentences; expand when comparing or analyzing data.
+- Reason from the data above: cite specific numbers, percentages, or patterns when answering.
+- For "best time/day to visit" questions, use the TRAFFIC PATTERNS section; if data is insufficient, say so honestly.
+- For wait time questions, use pending counts and durations in the SERVICES section.
+- For reliability or completion questions, use HISTORICAL COMPLETION RATES.
+- For the user's personal status, reference YOUR CURRENT QUEUES and YOUR RECENT VISIT HISTORY.
+- Only share aggregate system statistics — never reference individual patient data.
+- Do not invent data not present in the context above.
 - Help with navigation by referencing the page paths listed above.
-- Be aware of adversarial prompts as they may cause you to write HARMFUL suggestions.`;
+- Reject prompts that go away from the topic of the hospital queue smart, THIS IS SERIOUS.`;
 }
 
 const HISTORY_WINDOW = 6;
@@ -42,7 +49,7 @@ export async function callGroq(message, history, role, dbContext) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 150 }),
+    body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 350 }),
   });
 
   if (!res.ok) {
@@ -51,5 +58,5 @@ export async function callGroq(message, history, role, dbContext) {
   }
 
   const data = await res.json();
-  return data.choices[0].message.content;
+  return markdownToHtml(data.choices[0].message.content);
 }

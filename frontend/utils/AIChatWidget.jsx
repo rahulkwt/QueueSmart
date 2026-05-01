@@ -118,7 +118,11 @@ const AIChatWidget = ({ isAdmin }) => {
           <div className="ai-messages">
             {messages.map((m, i) => (
               <div key={i} className={`ai-msg ai-msg--${m.role}`}>
-                {m.text}
+                {m.role === "assistant" ? (
+                  <span dangerouslySetInnerHTML={{ __html: m.text }} />
+                ) : (
+                  m.text
+                )}
               </div>
             ))}
             {loading && (
