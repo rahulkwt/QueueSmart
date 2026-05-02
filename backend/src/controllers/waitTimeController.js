@@ -29,10 +29,6 @@ export function computeEffectiveQueue(queue) {
           break;
         }
       }
-    } else if (p === "mid" || p === "medium") {
-      if (i > 0 && effective[i - 1].priority.toLowerCase() === "low") {
-        [effective[i - 1], effective[i]] = [effective[i], effective[i - 1]];
-      }
     }
   }
 
