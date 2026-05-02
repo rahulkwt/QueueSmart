@@ -47,11 +47,6 @@ export async function serveNext(req, res) {
     }
     const { entry_id, user_id, history_id } = result.rows[0];
 
-    const queueIdRes = await pool.query(
-      "SELECT queue_id FROM queue_entry WHERE entry_id = $1",
-      [entry_id]
-    );
-
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'completed' WHERE entry_id = $1",
       [entry_id]
@@ -82,11 +77,6 @@ export async function removeFromQueue(req, res) {
       return res.status(404).json({ message: "Entry not found in queue." });
     }
     const { history_id } = result.rows[0];
-
-    const queueIdRes = await pool.query(
-      "SELECT queue_id FROM queue_entry WHERE entry_id = $1",
-      [entryId]
-    );
 
     await pool.query(
       "UPDATE queue_entry SET queue_entry_status = 'cancelled' WHERE entry_id = $1",
@@ -210,13 +200,7 @@ export async function joinQueue(req, res) {
 
     await client.query("COMMIT");
 
-    await reorderQueue(queueId);
-
-    const updated = await pool.query(
-      "SELECT * FROM queue_entry WHERE entry_id = $1",
-      [entry.rows[0].entry_id]
-    );
-    const row = updated.rows[0];
+    const row = entry.rows[0];
     return res.status(201).json({
       id: row.entry_id,
       userId: row.user_id,
@@ -261,8 +245,6 @@ export async function leaveQueue(req, res) {
         [history_id]
       );
     }
-
-    await reorderQueue(queueId);
 
     return res.status(200).json({ message: "Left queue." });
   } catch (err) {
