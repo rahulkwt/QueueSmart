@@ -25,6 +25,8 @@ const UserHome = () => {
       .catch(() => {});
   };
 
+  useEffect(() => { fetchServices(); }, []);
+
   useEffect(() => {
     if (services.length === 0) return;
 
