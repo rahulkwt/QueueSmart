@@ -154,8 +154,9 @@
 }
 .ai-msg--assistant ul {
   margin: 4px 0 2px 0;
-  padding-left: 16px;
+  padding-left: 6px;
   list-style-type: disc;
+  list-style-position: inside;
 }
 .ai-msg--assistant li { margin: 2px 0; }
 
