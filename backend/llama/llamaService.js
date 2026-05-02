@@ -1,5 +1,17 @@
 import { markdownToHtml } from "./markdownToHtml.js";
 
+// Convert stored HTML back to plain text before it goes into the AI's conversation history,
+// so the model doesn't learn to output raw HTML tags itself.
+function stripHtml(html) {
+  return html
+    .replace(/<br>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const AI_MODEL = "llama-3.1-8b-instant";
 
@@ -25,7 +37,8 @@ Guidelines:
 - Only share aggregate system statistics — never reference individual patient data.
 - Do not invent data not present in the context above.
 - Help with navigation by referencing the page paths listed above.
-- Reject prompts that go away from the topic of the hospital queue smart, THIS IS SERIOUS.`;
+- Reject prompts that go away from the topic of the hospital queue smart, THIS IS SERIOUS.
+- Format responses with Markdown only: **bold**, *italic*, \`code\`, - for bullet lists. Never output HTML tags.`;
 }
 
 const HISTORY_WINDOW = 6;
@@ -39,7 +52,7 @@ export async function callGroq(message, history, role, dbContext) {
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...recentHistory.map((h) => ({ role: h.role, content: h.text })),
+    ...recentHistory.map((h) => ({ role: h.role, content: stripHtml(h.text) })),
     { role: "user", content: message },
   ];
 

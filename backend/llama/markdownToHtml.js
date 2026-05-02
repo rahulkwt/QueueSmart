@@ -59,6 +59,12 @@ export function markdownToHtml(text) {
   // 4. Remaining newlines → <br>
   s = s.replace(/\n/g, "<br>");
 
+  // 4b. Remove <br> that are structural artifacts from list grouping, not real line breaks
+  s = s
+    .replace(/<ul><br>/g, "<ul>")
+    .replace(/<br><\/ul>/g, "</ul>")
+    .replace(/<\/li><br><li>/g, "</li><li>");
+
   // 5. Allowlist strip — remove any tag that isn't ours (defense-in-depth)
   return stripDisallowedTags(s);
 }

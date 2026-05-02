@@ -167,7 +167,12 @@ const AIChatWidget = ({ isAdmin }) => {
         onClick={() => setOpen((o) => !o)}
         title="AI Assistant"
       >
-        {open ? "✕" : "💬"}
+        {open ? "✕" : (
+          <>
+            <span>💬</span>
+            <span className="ai-toggle-label">QueueSmart AI</span>
+          </>
+        )}
       </button>
     </div>
   );
