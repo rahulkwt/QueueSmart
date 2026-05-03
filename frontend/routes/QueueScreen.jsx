@@ -178,7 +178,7 @@ const JoinQueue = () => {
         <div className="col-md-6 mb-3">
           <div className="card p-3 h-100">
             <h5>Estimated Wait Time</h5>
-            <p className="fs-4 mb-0">{estimatedWait ?? (peopleInQueue != null ? peopleInQueue * serviceDuration : 0)} minutes</p>
+            <p className="fs-4 mb-0">{peopleInQueue != null ? peopleInQueue * serviceDuration : 0} minutes</p>
           </div>
         </div>
       </div>
@@ -224,6 +224,13 @@ const JoinQueue = () => {
               <div className="card p-3 h-100">
                 <h5>Your Position</h5>
                 <p className="fs-4 mb-0">{position}</p>
+              </div>
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <div className="card p-3 h-100">
+                <h5>Your Estimated Wait</h5>
+                <p className="fs-4 mb-0">{estimatedWait != null ? estimatedWait : "—"} min</p>
               </div>
             </div>
 

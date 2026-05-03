@@ -15,6 +15,7 @@ const iconColors = [
 const UserHome = () => {
   const { user } = useAuth();
   const [services, setServices] = useState([]);
+  const [waitTimes, setWaitTimes] = useState({});
 
   const fetchServices = () => {
     axios
@@ -152,7 +153,7 @@ const UserHome = () => {
                     Open
                   </span>
                   <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
-                    {wait === null ? "Loading..." : `~${wait} min wait`}
+                    {waitTimes[svc.id] != null ? `~${waitTimes[svc.id]} min wait` : wait === null ? "Loading..." : `~${wait} min wait`}
                   </span>
                 </div>
               </div>
