@@ -12,26 +12,36 @@
 
 /* ── Toggle button ── */
 .ai-toggle {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
+  height: 48px;
+  border-radius: 24px;
+  padding: 0 18px 0 14px;
   background: #0d6efd;
   color: #fff;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(13, 110, 253, 0.45);
   transition: background 0.2s, transform 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 .ai-toggle:hover {
   background: #0b5ed7;
   transform: scale(1.05);
 }
 .ai-toggle--open {
-  font-size: 18px;
+  width: 48px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 17px;
+}
+.ai-toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 /* ── Chat window ── */
@@ -117,13 +127,13 @@
   font-size: 14px;
   line-height: 1.5;
   word-break: break-word;
-  white-space: pre-wrap;
 }
 .ai-msg--user {
   background: #0d6efd;
   color: #fff;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
 }
 .ai-msg--assistant {
   background: #e9ecef;
@@ -131,6 +141,24 @@
   align-self: flex-start;
   border-bottom-left-radius: 4px;
 }
+
+/* ── Markdown elements inside assistant bubbles ── */
+.ai-msg--assistant strong { font-weight: 600; }
+.ai-msg--assistant em     { font-style: italic; }
+.ai-msg--assistant code {
+  background: #d3d8de;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: monospace;
+  font-size: 13px;
+}
+.ai-msg--assistant ul {
+  margin: 4px 0 2px 0;
+  padding-left: 6px;
+  list-style-type: disc;
+  list-style-position: inside;
+}
+.ai-msg--assistant li { margin: 2px 0; }
 
 /* ── Typing indicator ── */
 .ai-typing {
