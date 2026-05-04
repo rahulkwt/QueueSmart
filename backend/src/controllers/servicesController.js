@@ -55,16 +55,29 @@ export async function createService(req, res) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       "INSERT INTO services (service_name, service_description, service_duration, service_is_deleted) VALUES ($1, $2, 0, false) RETURNING *",
       [name, description]
     );
     const row = result.rows[0];
+
+    await client.query(
+      "INSERT INTO queue (queue_name, service_id, estimated_time) VALUES ($1, $2, 0)",
+      [name, row.service_id]
+    );
+
+    await client.query("COMMIT");
     return res.status(201).json({ id: row.service_id, name: row.service_name, description: row.service_description });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("createService error:", err);
     return res.status(500).json({ message: "Internal server error." });
+  } finally {
+    client.release();
   }
 }
 
