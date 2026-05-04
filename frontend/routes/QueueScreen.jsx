@@ -30,6 +30,21 @@ const JoinQueue = () => {
     joinedRef.current = joined;
   }, [joined]);
 
+  const saveNotification = async (message) => {
+    try {
+      await axios.post(
+        "http://localhost:3000/api/user/notifications",
+        { message },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      window.dispatchEvent(new CustomEvent("notifications-updated"));
+    } catch (err) {
+      console.error("saveNotification error:", err);
+    }
+  };
+  const saveNotificationRef = useRef(saveNotification);
+  useEffect(() => { saveNotificationRef.current = saveNotification; });
+
   // Step 1: Look up serviceId by matching service name from admin services list
   useEffect(() => {
     axios
@@ -62,25 +77,26 @@ const JoinQueue = () => {
         setQueueId(myEntry.id);
         const raw = (myEntry.priority || "low").toLowerCase();
         setPriority(raw === "mid" ? "Medium" : raw.charAt(0).toUpperCase() + raw.slice(1));
-        const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
-        setPosition(pos);
         try {
           const waitRes = await fetch(
             `http://localhost:3000/api/queue/${svcId}/wait-time?entryId=${myEntry.id}&avgDuration=${serviceDuration}`
           );
           const waitData = await waitRes.json();
+          setPosition(waitData.position + 1);
           setEstimatedWait(waitData.estimatedWaitMinutes);
         } catch {
+          const pos = queue.findIndex((e) => e.id === myEntry.id) + 1;
+          setPosition(pos);
           setEstimatedWait(pos * serviceDuration);
         }
       } else if (joinedRef.current) {
-        // User was served or removed by admin — backend updated history automatically.
         joinedRef.current = false;
         setJoined(false);
         setQueueId(null);
         setPosition(null);
         setEstimatedWait(null);
         setStatus("Waiting");
+        saveNotificationRef.current(`You've been served — ${decodedService}`);
       }
 
       return queue.length;
@@ -108,11 +124,10 @@ const JoinQueue = () => {
       if (!almostReadyFiredRef.current) {
         almostReadyFiredRef.current = true;
         localStorage.setItem(`almostReadyFired_${decodedService}`, "true");
-        window.dispatchEvent(new CustomEvent("queue-almost-ready", { detail: { service: decodedService } }));
+        saveNotificationRef.current(`Almost your turn — ${decodedService}`);
       }
     } else {
       setStatus("Served");
-      window.dispatchEvent(new CustomEvent("queue-served", { detail: { service: decodedService } }));
     }
   }, [position]);
 
@@ -120,16 +135,14 @@ const JoinQueue = () => {
     if (!serviceId) return;
     try {
       setLoading(true);
-      const res = await axios.post(
+      await axios.post(
         `http://localhost:3000/api/queue/${serviceId}/join`,
         { priority },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      setQueueId(res.data.id);
-      setJoined(true);
       almostReadyFiredRef.current = false;
       localStorage.removeItem(`almostReadyFired_${decodedService}`);
-      window.dispatchEvent(new CustomEvent("queue-joined", { detail: { service: decodedService, priority } }));
+      saveNotification(`Joined ${decodedService} Queue — Priority: ${priority}`);
       await fetchQueue(serviceId);
     } catch (err) {
       console.error("Error joining queue:", err);
