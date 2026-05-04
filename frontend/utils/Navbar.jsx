@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,17 +15,6 @@ const Navbar = ({ isAdmin = false }) => {
       setNotifications(res.data);
       setUnreadCount(res.data.filter((n) => n.notif_status === "unread").length);
     } catch (err) { console.error("fetchNotifications error:", err); }
-  };
-
-  const saveNotification = async (message) => {
-    try {
-      await axios.post(
-        "http://localhost:3000/api/user/notifications",
-        { message },
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-      fetchNotifications();
-    } catch (err) { console.error("saveNotification error:", err); }
   };
 
   const markAllRead = async () => {
@@ -49,32 +38,20 @@ const Navbar = ({ isAdmin = false }) => {
     } catch (err) { console.error("clearAll error:", err); }
   };
 
+  const fetchNotificationsRef = useRef(fetchNotifications);
   useEffect(() => {
-    if (!isAdmin) fetchNotifications();
+    fetchNotificationsRef.current = fetchNotifications;
+  });
+
+  useEffect(() => {
+    if (!isAdmin) fetchNotificationsRef.current();
   }, []);
 
   useEffect(() => {
-    const handleJoined = (e) => {
-      const { service, priority } = e.detail;
-      saveNotification(`Joined ${service} Queue — Priority: ${priority}`);
-    };
-    const handleAlmostReady = (e) => {
-      const { service } = e.detail;
-      saveNotification(`Almost your turn — ${service}`);
-    };
-    const handleServed = (e) => {
-      const { service } = e.detail;
-      saveNotification(`You've been served — ${service}`);
-    };
-
-    window.addEventListener("queue-joined", handleJoined);
-    window.addEventListener("queue-almost-ready", handleAlmostReady);
-    window.addEventListener("queue-served", handleServed);
-    return () => {
-      window.removeEventListener("queue-joined", handleJoined);
-      window.removeEventListener("queue-almost-ready", handleAlmostReady);
-      window.removeEventListener("queue-served", handleServed);
-    };
+    if (isAdmin) return;
+    const handleUpdated = () => fetchNotificationsRef.current();
+    window.addEventListener("notifications-updated", handleUpdated);
+    return () => window.removeEventListener("notifications-updated", handleUpdated);
   }, []);
 
   return (

@@ -11,20 +11,19 @@ const QueueManagement = () => {
   const [error, setError] = useState(null);
 
   // Shared fetch wrapper: auto-logout on 401/403, surface errors to UI
-  const adminFetch = (url, options = {}) => {
-    return fetch(url, {
+  const adminFetch = async (url, options = {}) => {
+    const res = await fetch(url, {
       ...options,
       headers: {
         ...options.headers,
         Authorization: `Bearer ${user.token}`,
       },
-    }).then((res) => {
-      if (res.status === 401 || res.status === 403) {
-        logout(); // token is invalid or expired — send back to login
-        return null;
-      }
-      return res;
     });
+    if (res.status === 401 || res.status === 403) {
+      logout();
+      return null;
+    }
+    return res;
   };
 
   // Fetch the live queue for the given service id
@@ -133,45 +132,6 @@ const QueueManagement = () => {
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Queue List */}
-      <div className="card p-3 mb-4">
-        <h5>Current Queue</h5>
-
-        {queue.length === 0 ? (
-          <p>No users in queue.</p>
-        ) : (
-          <ul className="list-group">
-            {queue.map((entry, index) => (
-              <li
-                key={entry.id}
-                className="list-group-item d-flex justify-content-between align-items-center"
-              >
-                <span>
-                  #{entry.position} - {entry.name}
-                </span>
-
-                <div>
-                  <button
-                    className="btn btn-sm btn-outline-secondary me-2"
-                    onClick={() => moveUp(entry.id)}
-                    disabled={index === 0}
-                  >
-                    ↑
-                  </button>
-
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => removeUser(entry.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
       <div className="card shadow-sm border-0 mb-4">
